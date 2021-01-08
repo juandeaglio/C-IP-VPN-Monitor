@@ -1,0 +1,169 @@
+        -:    0:Source:l-u_01-01-21_2.hpp
+        -:    0:Graph:testing.gcno
+        -:    0:Data:-
+        -:    0:Runs:0
+        -:    1:#include <iostream>
+        -:    2:#include <stdio.h>
+        -:    3:#include <fstream>
+        -:    4:#include <cstring>
+        -:    5:#include <string>
+        -:    6:#include <stdlib.h>
+        -:    7:#include <unistd.h>
+        -:    8:#include <regex>
+        -:    9:#include <libgen.h>
+        -:   10:#include <sys/types.h>
+        -:   11:#include <dirent.h>
+        -:   12:using namespace std;
+        -:   13:typedef unsigned char byte;
+        -:   14:
+        -:   15:FILE *fp;
+        -:   16:string homedir;
+        -:   17:string user;
+        -:   18:string logfile;
+        -:   19:string cntfile;
+        -:   20:string configDir = "";
+        -:   21:string entryName = "";
+        -:   22:string creds = "";
+        -:   23:string config = "";
+        -:   24:int i = 0;
+        -:   25:string susbdir;
+        -:   26:string phoneNum;
+        -:   27:char* c_time_string;
+        -:   28:
+    #####:   29:string shellCommand(string cmd) 
+        -:   30:{
+    #####:   31:    string data;
+        -:   32:    //FILE * stream;
+    #####:   33:    const int max_buffer = 256;
+        -:   34:    char buffer[max_buffer];
+    #####:   35:    cmd.append(" 2>&1");
+        -:   36:
+    #####:   37:    fp = popen(cmd.c_str(), "r");
+    #####:   38:    if (fp) 
+        -:   39:	{
+    #####:   40:		while (!feof(fp))
+    #####:   41:		if (fgets(buffer, max_buffer, fp) != NULL) data.append(buffer);
+    #####:   42:		pclose(fp);
+        -:   43:    }
+    #####:   44:    return data;
+        -:   45:}
+    #####:   46:void ShutDown(string cmd)
+        -:   47:{
+    #####:   48:	string phonemsg;
+    #####:   49:	string logtext;
+        -:   50:
+        -:   51:	//Leave a record in log file
+        -:   52:	time_t current_time;
+        -:   53:	char* c_time_string;
+    #####:   54:	current_time = time(NULL);
+    #####:   55:	c_time_string = ctime(&current_time);
+        -:   56:
+    #####:   57:	printf("Current time is %s\n", c_time_string);
+        -:   58:
+        -:   59:	//construct log file text based on incoming message.
+    #####:   60:	logtext = "Poweroff called due to ";
+    #####:   61:	logtext += cmd;
+    #####:   62:	logtext += " at %s\n ";
+        -:   63:
+        -:   64:	//write log file text
+    #####:   65:	fp = fopen(logfile.c_str(), "a");
+    #####:   66:	fprintf(fp, logtext.c_str(), c_time_string);
+    #####:   67:	fclose(fp);
+        -:   68:
+        -:   69:	//construct phone message command based on incoming message.
+    #####:   70:	phonemsg = "echo ";
+    #####:   71:	phonemsg += "'Poweroff called due to ";
+    #####:   72:	phonemsg += cmd;
+    #####:   73:	phonemsg += "' | ssmtp ";//8054276925@txt.att.net";
+    #####:   74:	phonemsg +=  phoneNum;
+    #####:   75:	phonemsg +=  "@txt.att.net";
+        -:   76:
+        -:   77:	//send ssmtp message on my cellphone
+    #####:   78:	fp = popen(phonemsg.c_str(), "r");
+    #####:   79:	pclose(fp);
+        -:   80:
+    #####:   81:	sleep(1);
+        -:   82:
+        -:   83:	//shutdown comp
+    #####:   84:	fp = popen("poweroff", "r");
+    #####:   85:	pclose(fp);
+        -:   86:	//return 0;
+    #####:   87:}
+        -:   88:
+    #####:   89:string GetCurrentIP()
+        -:   90:{
+    #####:   91:	const string text = shellCommand("curl -s http://checkip.dyndns.org/");
+        -:   92:
+    #####:   93:    const regex vowels("[a-zA-Z<>/:'\n' ]");
+    #####:   94:    stringstream result;
+        -:   95:
+        -:   96:	//Remove all HTML stuff and null terminator
+    #####:   97:    regex_replace(ostream_iterator<char>(result), text.begin(), text.end(), vowels, "");
+        -:   98:
+        -:   99:	//return string retreived from stream
+    #####:  100:	return result.str();
+        -:  101:}
+        -:  102:
+    #####:  103:void locateConfig(const char *name, int indent)
+        -:  104:{
+        -:  105:    DIR *dir;
+        -:  106:    struct dirent *entry;
+        -:  107:
+    #####:  108:    if (!(dir = opendir(name)))
+    #####:  109:        return;
+        -:  110:
+    #####:  111:    while ((entry = readdir(dir)) != NULL) 
+        -:  112:	{
+        -:  113:		char path[1024];
+    #####:  114:        if (entry->d_type == DT_DIR) 
+        -:  115:		{
+        -:  116:            //char path[1024];
+    #####:  117:            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+    #####:  118:                continue;
+    #####:  119:            snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
+        -:  120:            //printf("%*s[%s]\n", indent, "", entry->d_name);
+    #####:  121:			if(!strcmp(entry->d_name, "nordvpn_start"))
+        -:  122:			{
+    #####:  123:				configDir = path;
+    #####:  124:				entryName = entry->d_name;
+        -:  125:				
+    #####:  126:            	locateConfig(path, indent + 2);
+    #####:  127:				break;
+        -:  128:			}
+    #####:  129:            locateConfig(path, indent + 2);
+        -:  130:        } 
+        -:  131:		else 
+        -:  132:		{
+    #####:  133:			if(entryName == "nordvpn_start")
+        -:  134:			{
+        -:  135:				//list files in directory
+    #####:  136:				if(!i)
+    #####:  137:					creds = entry->d_name;
+        -:  138:				else
+    #####:  139:					config = entry->d_name;	
+    #####:  140:				i++;			
+        -:  141:				//cout<<entry->d_name<<endl;
+        -:  142:			}
+        -:  143:        }
+        -:  144:    }
+    #####:  145:    closedir(dir);
+        -:  146:}
+        -:  147:
+    #####:  148:string getPhone()
+        -:  149:{
+    #####:  150:	int i = 0;
+    #####:  151:	string line;
+    #####:  152:	string number;
+        -:  153:
+        -:  154:	//reading from expcnt file
+    #####:  155:	ifstream file(cntfile);
+    #####:  156:	while(getline(file, line)) 
+        -:  157:	{
+    #####:  158:		if(i == 2)
+    #####:  159:			number = line;
+    #####:  160:		i++;
+        -:  161:	}
+    #####:  162:	file.close();
+    #####:  163:	return number;
+        -:  164:}
+        -:  165:int run();

@@ -1,0 +1,1990 @@
+        -:    0:Source:/usr/include/c++/10/bits/stl_construct.h
+        -:    0:Graph:testing.gcno
+        -:    0:Data:-
+        -:    0:Runs:0
+        -:    1:// nonstandard construct and destroy functions -*- C++ -*-
+        -:    2:
+        -:    3:// Copyright (C) 2001-2020 Free Software Foundation, Inc.
+        -:    4://
+        -:    5:// This file is part of the GNU ISO C++ Library.  This library is free
+        -:    6:// software; you can redistribute it and/or modify it under the
+        -:    7:// terms of the GNU General Public License as published by the
+        -:    8:// Free Software Foundation; either version 3, or (at your option)
+        -:    9:// any later version.
+        -:   10:
+        -:   11:// This library is distributed in the hope that it will be useful,
+        -:   12:// but WITHOUT ANY WARRANTY; without even the implied warranty of
+        -:   13:// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        -:   14:// GNU General Public License for more details.
+        -:   15:
+        -:   16:// Under Section 7 of GPL version 3, you are granted additional
+        -:   17:// permissions described in the GCC Runtime Library Exception, version
+        -:   18:// 3.1, as published by the Free Software Foundation.
+        -:   19:
+        -:   20:// You should have received a copy of the GNU General Public License and
+        -:   21:// a copy of the GCC Runtime Library Exception along with this program;
+        -:   22:// see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+        -:   23:// <http://www.gnu.org/licenses/>.
+        -:   24:
+        -:   25:/*
+        -:   26: *
+        -:   27: * Copyright (c) 1994
+        -:   28: * Hewlett-Packard Company
+        -:   29: *
+        -:   30: * Permission to use, copy, modify, distribute and sell this software
+        -:   31: * and its documentation for any purpose is hereby granted without fee,
+        -:   32: * provided that the above copyright notice appear in all copies and
+        -:   33: * that both that copyright notice and this permission notice appear
+        -:   34: * in supporting documentation.  Hewlett-Packard Company makes no
+        -:   35: * representations about the suitability of this software for any
+        -:   36: * purpose.  It is provided "as is" without express or implied warranty.
+        -:   37: *
+        -:   38: *
+        -:   39: * Copyright (c) 1996,1997
+        -:   40: * Silicon Graphics Computer Systems, Inc.
+        -:   41: *
+        -:   42: * Permission to use, copy, modify, distribute and sell this software
+        -:   43: * and its documentation for any purpose is hereby granted without fee,
+        -:   44: * provided that the above copyright notice appear in all copies and
+        -:   45: * that both that copyright notice and this permission notice appear
+        -:   46: * in supporting documentation.  Silicon Graphics makes no
+        -:   47: * representations about the suitability of this software for any
+        -:   48: * purpose.  It is provided "as is" without express or implied warranty.
+        -:   49: */
+        -:   50:
+        -:   51:/** @file bits/stl_construct.h
+        -:   52: *  This is an internal header file, included by other library headers.
+        -:   53: *  Do not attempt to use it directly. @headername{memory}
+        -:   54: */
+        -:   55:
+        -:   56:#ifndef _STL_CONSTRUCT_H
+        -:   57:#define _STL_CONSTRUCT_H 1
+        -:   58:
+        -:   59:#include <new>
+        -:   60:#include <bits/move.h>
+        -:   61:#include <bits/stl_iterator_base_types.h> // for iterator_traits
+        -:   62:#include <bits/stl_iterator_base_funcs.h> // for advance
+        -:   63:
+        -:   64:/* This file provides the C++17 functions std::destroy_at, std::destroy, and
+        -:   65: * std::destroy_n, and the C++20 function std::construct_at.
+        -:   66: * It also provides std::_Construct, std::_Destroy,and std::_Destroy_n functions
+        -:   67: * which are defined in all standard modes and so can be used in C++98-14 code.
+        -:   68: * The _Destroy functions will dispatch to destroy_at during constant
+        -:   69: * evaluation, because calls to that function are intercepted by the compiler
+        -:   70: * to allow use in constant expressions.
+        -:   71: */
+        -:   72:
+        -:   73:namespace std _GLIBCXX_VISIBILITY(default)
+        -:   74:{
+        -:   75:_GLIBCXX_BEGIN_NAMESPACE_VERSION
+        -:   76:
+        -:   77:#if __cplusplus >= 201703L
+        -:   78:  template <typename _Tp>
+        -:   79:    _GLIBCXX20_CONSTEXPR inline void
+        -:   80:    destroy_at(_Tp* __location)
+        -:   81:    {
+        -:   82:      if constexpr (__cplusplus > 201703L && is_array_v<_Tp>)
+        -:   83:	{
+        -:   84:	  for (auto& __x : *__location)
+        -:   85:	    std::destroy_at(std::__addressof(__x));
+        -:   86:	}
+        -:   87:      else
+        -:   88:	__location->~_Tp();
+        -:   89:    }
+        -:   90:
+        -:   91:#if __cplusplus > 201703L
+        -:   92:  template<typename _Tp, typename... _Args>
+        -:   93:    constexpr auto
+        -:   94:    construct_at(_Tp* __location, _Args&&... __args)
+        -:   95:    noexcept(noexcept(::new((void*)0) _Tp(std::declval<_Args>()...)))
+        -:   96:    -> decltype(::new((void*)0) _Tp(std::declval<_Args>()...))
+        -:   97:    { return ::new((void*)__location) _Tp(std::forward<_Args>(__args)...); }
+        -:   98:#endif // C++20
+        -:   99:#endif// C++17
+        -:  100:
+        -:  101:  /**
+        -:  102:   * Constructs an object in existing memory by invoking an allocated
+        -:  103:   * object's constructor with an initializer.
+        -:  104:   */
+        -:  105:#if __cplusplus >= 201103L
+        -:  106:  template<typename _Tp, typename... _Args>
+        -:  107:    inline void
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::Arg, Catch::clara::detail::Arg const&>(Catch::clara::detail::Arg*, Catch::clara::detail::Arg const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::shared_ptr<Catch::IReporterFactory>, std::shared_ptr<Catch::IReporterFactory> >(std::shared_ptr<Catch::IReporterFactory>*, std::shared_ptr<Catch::IReporterFactory>&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::MessageInfo, Catch::MessageInfo>(Catch::MessageInfo*, Catch::MessageInfo&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::HelpColumns, Catch::clara::detail::HelpColumns&>(Catch::clara::detail::HelpColumns*, Catch::clara::detail::HelpColumns&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::Opt, Catch::clara::detail::Opt>(Catch::clara::detail::Opt*, Catch::clara::detail::Opt&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::Arg, Catch::clara::detail::Arg>(Catch::clara::detail::Arg*, Catch::clara::detail::Arg&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::Token, Catch::clara::detail::Token>(Catch::clara::detail::Token*, Catch::clara::detail::Token&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::TextFlow::Column, Catch::clara::TextFlow::Column>(Catch::clara::TextFlow::Column*, Catch::clara::TextFlow::Column&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::(anonymous namespace)::ColumnInfo, Catch::(anonymous namespace)::ColumnInfo const&>(Catch::(anonymous namespace)::ColumnInfo*, Catch::(anonymous namespace)::ColumnInfo const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::TestSpec::FilterMatch>(Catch::TestSpec::FilterMatch*):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::TestCase, Catch::TestCase>(Catch::TestCase*, Catch::TestCase&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::pair<unsigned long, Catch::TestCase const*>, std::pair<unsigned long, Catch::TestCase const*> >(std::pair<unsigned long, Catch::TestCase const*>*, std::pair<unsigned long, Catch::TestCase const*>&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::pair<int, Catch::StringRef>, std::pair<int, Catch::StringRef> >(std::pair<int, Catch::StringRef>*, std::pair<int, Catch::StringRef>&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::StringRef, Catch::StringRef>(Catch::StringRef*, Catch::StringRef&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::SectionEndInfo, Catch::SectionEndInfo>(Catch::SectionEndInfo*, Catch::SectionEndInfo&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::Opt, Catch::clara::detail::Opt const&>(Catch::clara::detail::Opt*, Catch::clara::detail::Opt const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::HelpColumns, Catch::clara::detail::HelpColumns const&>(Catch::clara::detail::HelpColumns*, Catch::clara::detail::HelpColumns const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::Token>(Catch::clara::detail::Token*):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, char const* const&>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, char const* const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::TextFlow::Column::iterator, Catch::clara::TextFlow::Column::iterator>(Catch::clara::TextFlow::Column::iterator*, Catch::clara::TextFlow::Column::iterator&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::TestSpec::Filter, Catch::TestSpec::Filter const&>(Catch::TestSpec::Filter*, Catch::TestSpec::Filter const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::TestCase, Catch::TestCase const&>(Catch::TestCase*, Catch::TestCase const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::Arg, Catch::clara::detail::Arg&>(Catch::clara::detail::Arg*, Catch::clara::detail::Arg&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::Opt, Catch::clara::detail::Opt&>(Catch::clara::detail::Opt*, Catch::clara::detail::Opt&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::MessageInfo, Catch::MessageInfo const&>(Catch::MessageInfo*, Catch::MessageInfo const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::Token, Catch::clara::detail::Token const&>(Catch::clara::detail::Token*, Catch::clara::detail::Token const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::TextFlow::Column, Catch::clara::TextFlow::Column const&>(Catch::clara::TextFlow::Column*, Catch::clara::TextFlow::Column const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::AssertionStats, Catch::AssertionStats const&>(Catch::AssertionStats*, Catch::AssertionStats const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >(std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >*, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::pair<char, char>, std::pair<char, char> >(std::pair<char, char>*, std::pair<char, char>&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > const&>(std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >*, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::__cxx11::regex_traits<char>::_RegexMask, std::__cxx11::regex_traits<char>::_RegexMask const&>(std::__cxx11::regex_traits<char>::_RegexMask*, std::__cxx11::regex_traits<char>::_RegexMask const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::pair<char, char>, std::pair<char, char> const&>(std::pair<char, char>*, std::pair<char, char> const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::__cxx11::regex_traits<char>::_RegexMask, std::__cxx11::regex_traits<char>::_RegexMask>(std::__cxx11::regex_traits<char>::_RegexMask*, std::__cxx11::regex_traits<char>::_RegexMask&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >, std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > > >(std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >*, std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::__detail::_State<char>, std::__detail::_State<char> const&>(std::__detail::_State<char>*, std::__detail::_State<char> const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::pair<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, int>>(std::pair<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, int>*):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&>(std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*, std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> >, std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> > >(std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> >*, std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> >&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > > >(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::SummaryColumn, Catch::SummaryColumn>(Catch::SummaryColumn*, Catch::SummaryColumn&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::SectionInfo, Catch::SectionInfo>(Catch::SectionInfo*, Catch::SectionInfo&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::shared_ptr<Catch::TestSpec::Pattern>, std::shared_ptr<Catch::TestSpec::Pattern> const&>(std::shared_ptr<Catch::TestSpec::Pattern>*, std::shared_ptr<Catch::TestSpec::Pattern> const&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > >, std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > > >(std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > >*, std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > >&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> >, std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> > >(std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> >*, std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> >&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> >, std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> > >(std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> >*, std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> >&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::clara::detail::HelpColumns, Catch::clara::detail::HelpColumns>(Catch::clara::detail::HelpColumns*, Catch::clara::detail::HelpColumns&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >&>(std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*, std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::shared_ptr<Catch::TestSpec::Pattern>, std::shared_ptr<Catch::TestSpec::Pattern> >(std::shared_ptr<Catch::TestSpec::Pattern>*, std::shared_ptr<Catch::TestSpec::Pattern>&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::TestSpec::Filter, Catch::TestSpec::Filter>(Catch::TestSpec::Filter*, Catch::TestSpec::Filter&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::shared_ptr<Catch::TestCaseTracking::ITracker>, std::shared_ptr<Catch::TestCaseTracking::ITracker> >(std::shared_ptr<Catch::TestCaseTracking::ITracker>*, std::shared_ptr<Catch::TestCaseTracking::ITracker>&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<std::__exception_ptr::exception_ptr, std::__exception_ptr::exception_ptr>(std::__exception_ptr::exception_ptr*, std::__exception_ptr::exception_ptr&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+void std::_Construct<Catch::ScopedMessage, Catch::ScopedMessage>(Catch::ScopedMessage*, Catch::ScopedMessage&&):
+    #####:  108:    _Construct(_Tp* __p, _Args&&... __args)
+    #####:  109:    { ::new(static_cast<void*>(__p)) _Tp(std::forward<_Args>(__args)...); }
+------------------
+        -:  110:#else
+        -:  111:  template<typename _T1, typename _T2>
+        -:  112:    inline void
+        -:  113:    _Construct(_T1* __p, const _T2& __value)
+        -:  114:    {
+        -:  115:      // _GLIBCXX_RESOLVE_LIB_DEFECTS
+        -:  116:      // 402. wrong new expression in [some_]allocator::construct
+        -:  117:      ::new(static_cast<void*>(__p)) _T1(__value);
+        -:  118:    }
+        -:  119:#endif
+        -:  120:
+        -:  121:  template<typename _T1>
+        -:  122:    inline void
+        -:  123:    _Construct_novalue(_T1* __p)
+        -:  124:    { ::new(static_cast<void*>(__p)) _T1; }
+        -:  125:
+        -:  126:  template<typename _ForwardIterator>
+        -:  127:    _GLIBCXX20_CONSTEXPR void
+        -:  128:    _Destroy(_ForwardIterator __first, _ForwardIterator __last);
+        -:  129:
+        -:  130:  /**
+        -:  131:   * Destroy the object pointed to by a pointer type.
+        -:  132:   */
+        -:  133:  template<typename _Tp>
+        -:  134:    _GLIBCXX14_CONSTEXPR inline void
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::TestSpec::FilterMatch>(Catch::TestSpec::FilterMatch*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::clara::TextFlow::Column>(Catch::clara::TextFlow::Column*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::clara::detail::Token>(Catch::clara::detail::Token*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::clara::detail::HelpColumns>(Catch::clara::detail::HelpColumns*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::clara::detail::Opt>(Catch::clara::detail::Opt*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::clara::detail::Arg>(Catch::clara::detail::Arg*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::TestSpec::Filter>(Catch::TestSpec::Filter*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::TestSpec::Pattern> >(std::shared_ptr<Catch::TestSpec::Pattern>*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> > >(std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> >*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::MessageInfo>(Catch::MessageInfo*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::TestCase>(Catch::TestCase*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::IReporterFactory> >(std::shared_ptr<Catch::IReporterFactory>*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::TestCaseTracking::ITracker> >(std::shared_ptr<Catch::TestCaseTracking::ITracker>*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::ScopedMessage>(Catch::ScopedMessage*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::SectionEndInfo>(Catch::SectionEndInfo*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >(std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::SectionInfo>(Catch::SectionInfo*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::(anonymous namespace)::ColumnInfo>(Catch::(anonymous namespace)::ColumnInfo*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::SummaryColumn>(Catch::SummaryColumn*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<Catch::AssertionStats>(Catch::AssertionStats*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::vector<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>, std::allocator<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >(std::vector<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>, std::allocator<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > > >(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> > >(std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> >*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::__exception_ptr::exception_ptr>(std::__exception_ptr::exception_ptr*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> > >(std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> >*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > > >(std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > >*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > > >(std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+void std::_Destroy<std::__detail::_State<char> >(std::__detail::_State<char>*):
+    #####:  135:    _Destroy(_Tp* __pointer)
+        -:  136:    {
+        -:  137:#if __cplusplus > 201703L
+        -:  138:      std::destroy_at(__pointer);
+        -:  139:#else
+    #####:  140:      __pointer->~_Tp();
+        -:  141:#endif
+    #####:  142:    }
+------------------
+        -:  143:
+        -:  144:  template<bool>
+        -:  145:    struct _Destroy_aux
+        -:  146:    {
+        -:  147:      template<typename _ForwardIterator>
+        -:  148:	static _GLIBCXX20_CONSTEXPR void
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> >*>(std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> >*, std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> >*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<__gnu_cxx::__normal_iterator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >(__gnu_cxx::__normal_iterator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >, __gnu_cxx::__normal_iterator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::TestSpec::FilterMatch*>(Catch::TestSpec::FilterMatch*, Catch::TestSpec::FilterMatch*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::SectionEndInfo*>(Catch::SectionEndInfo*, Catch::SectionEndInfo*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::ScopedMessage*>(Catch::ScopedMessage*, Catch::ScopedMessage*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::shared_ptr<Catch::TestCaseTracking::ITracker>*>(std::shared_ptr<Catch::TestCaseTracking::ITracker>*, std::shared_ptr<Catch::TestCaseTracking::ITracker>*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::shared_ptr<Catch::IReporterFactory>*>(std::shared_ptr<Catch::IReporterFactory>*, std::shared_ptr<Catch::IReporterFactory>*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::TestCase*>(Catch::TestCase*, Catch::TestCase*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::MessageInfo*>(Catch::MessageInfo*, Catch::MessageInfo*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<__gnu_cxx::__normal_iterator<Catch::clara::detail::Opt*, std::vector<Catch::clara::detail::Opt, std::allocator<Catch::clara::detail::Opt> > > >(__gnu_cxx::__normal_iterator<Catch::clara::detail::Opt*, std::vector<Catch::clara::detail::Opt, std::allocator<Catch::clara::detail::Opt> > >, __gnu_cxx::__normal_iterator<Catch::clara::detail::Opt*, std::vector<Catch::clara::detail::Opt, std::allocator<Catch::clara::detail::Opt> > >):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::shared_ptr<Catch::TestSpec::Pattern>*>(std::shared_ptr<Catch::TestSpec::Pattern>*, std::shared_ptr<Catch::TestSpec::Pattern>*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::TestSpec::Filter*>(Catch::TestSpec::Filter*, Catch::TestSpec::Filter*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::clara::detail::Arg*>(Catch::clara::detail::Arg*, Catch::clara::detail::Arg*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::clara::detail::Opt*>(Catch::clara::detail::Opt*, Catch::clara::detail::Opt*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::clara::detail::HelpColumns*>(Catch::clara::detail::HelpColumns*, Catch::clara::detail::HelpColumns*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::clara::detail::Token*>(Catch::clara::detail::Token*, Catch::clara::detail::Token*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::clara::TextFlow::Column*>(Catch::clara::TextFlow::Column*, Catch::clara::TextFlow::Column*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*>(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::__detail::_State<char>*>(std::__detail::_State<char>*, std::__detail::_State<char>*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >*>(std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >*, std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > >*>(std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > >*, std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > >*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> >*>(std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> >*, std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> >*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::__exception_ptr::exception_ptr*>(std::__exception_ptr::exception_ptr*, std::__exception_ptr::exception_ptr*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> >*>(std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> >*, std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> >*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>*>(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >*>(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >*>(std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >*, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >*>(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<std::vector<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>, std::allocator<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*>(std::vector<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>, std::allocator<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*, std::vector<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>, std::allocator<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::AssertionStats*>(Catch::AssertionStats*, Catch::AssertionStats*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::SummaryColumn*>(Catch::SummaryColumn*, Catch::SummaryColumn*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::(anonymous namespace)::ColumnInfo*>(Catch::(anonymous namespace)::ColumnInfo*, Catch::(anonymous namespace)::ColumnInfo*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<Catch::SectionInfo*>(Catch::SectionInfo*, Catch::SectionInfo*):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+void std::_Destroy_aux<false>::__destroy<__gnu_cxx::__normal_iterator<Catch::clara::detail::Arg*, std::vector<Catch::clara::detail::Arg, std::allocator<Catch::clara::detail::Arg> > > >(__gnu_cxx::__normal_iterator<Catch::clara::detail::Arg*, std::vector<Catch::clara::detail::Arg, std::allocator<Catch::clara::detail::Arg> > >, __gnu_cxx::__normal_iterator<Catch::clara::detail::Arg*, std::vector<Catch::clara::detail::Arg, std::allocator<Catch::clara::detail::Arg> > >):
+    #####:  149:	__destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  150:	{
+    #####:  151:	  for (; __first != __last; ++__first)
+    #####:  152:	    std::_Destroy(std::__addressof(*__first));
+    #####:  153:	}
+------------------
+        -:  154:    };
+        -:  155:
+        -:  156:  template<>
+        -:  157:    struct _Destroy_aux<true>
+        -:  158:    {
+        -:  159:      template<typename _ForwardIterator>
+        -:  160:        static void
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<std::__cxx11::regex_traits<char>::_RegexMask*>(std::__cxx11::regex_traits<char>::_RegexMask*, std::__cxx11::regex_traits<char>::_RegexMask*):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<std::pair<char, char>*>(std::pair<char, char>*, std::pair<char, char>*):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<std::pair<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, int>*>(std::pair<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, int>*, std::pair<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, int>*):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<__gnu_cxx::__normal_iterator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > > >(__gnu_cxx::__normal_iterator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >, __gnu_cxx::__normal_iterator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<char*>(char*, char*):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*>(std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*, std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<Catch::TestCase const**>(Catch::TestCase const**, Catch::TestCase const**):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<std::pair<unsigned long, Catch::TestCase const*>*>(std::pair<unsigned long, Catch::TestCase const*>*, std::pair<unsigned long, Catch::TestCase const*>*):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<Catch::ISingleton**>(Catch::ISingleton**, Catch::ISingleton**):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<Catch::TestCaseTracking::ITracker**>(Catch::TestCaseTracking::ITracker**, Catch::TestCaseTracking::ITracker**):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<std::pair<int, Catch::StringRef>*>(std::pair<int, Catch::StringRef>*, std::pair<int, Catch::StringRef>*):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<Catch::StringRef*>(Catch::StringRef*, Catch::StringRef*):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<unsigned long*>(unsigned long*, unsigned long*):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+void std::_Destroy_aux<true>::__destroy<Catch::clara::TextFlow::Column::iterator*>(Catch::clara::TextFlow::Column::iterator*, Catch::clara::TextFlow::Column::iterator*):
+    #####:  161:        __destroy(_ForwardIterator, _ForwardIterator) { }
+------------------
+        -:  162:    };
+        -:  163:
+        -:  164:  /**
+        -:  165:   * Destroy a range of objects.  If the value_type of the object has
+        -:  166:   * a trivial destructor, the compiler should optimize all of this
+        -:  167:   * away, otherwise the objects' destructors must be invoked.
+        -:  168:   */
+        -:  169:  template<typename _ForwardIterator>
+        -:  170:    _GLIBCXX20_CONSTEXPR inline void
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::pair<int, Catch::StringRef>*>(std::pair<int, Catch::StringRef>*, std::pair<int, Catch::StringRef>*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<__gnu_cxx::__normal_iterator<Catch::clara::detail::Arg*, std::vector<Catch::clara::detail::Arg, std::allocator<Catch::clara::detail::Arg> > > >(__gnu_cxx::__normal_iterator<Catch::clara::detail::Arg*, std::vector<Catch::clara::detail::Arg, std::allocator<Catch::clara::detail::Arg> > >, __gnu_cxx::__normal_iterator<Catch::clara::detail::Arg*, std::vector<Catch::clara::detail::Arg, std::allocator<Catch::clara::detail::Arg> > >):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<__gnu_cxx::__normal_iterator<Catch::clara::detail::Opt*, std::vector<Catch::clara::detail::Opt, std::allocator<Catch::clara::detail::Opt> > > >(__gnu_cxx::__normal_iterator<Catch::clara::detail::Opt*, std::vector<Catch::clara::detail::Opt, std::allocator<Catch::clara::detail::Opt> > >, __gnu_cxx::__normal_iterator<Catch::clara::detail::Opt*, std::vector<Catch::clara::detail::Opt, std::allocator<Catch::clara::detail::Opt> > >):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<__gnu_cxx::__normal_iterator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > >(__gnu_cxx::__normal_iterator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >, __gnu_cxx::__normal_iterator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::TestSpec::FilterMatch*>(Catch::TestSpec::FilterMatch*, Catch::TestSpec::FilterMatch*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::TestCaseTracking::ITracker**>(Catch::TestCaseTracking::ITracker**, Catch::TestCaseTracking::ITracker**):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::SectionEndInfo*>(Catch::SectionEndInfo*, Catch::SectionEndInfo*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::ScopedMessage*>(Catch::ScopedMessage*, Catch::ScopedMessage*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::TestCaseTracking::ITracker>*>(std::shared_ptr<Catch::TestCaseTracking::ITracker>*, std::shared_ptr<Catch::TestCaseTracking::ITracker>*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::IReporterFactory>*>(std::shared_ptr<Catch::IReporterFactory>*, std::shared_ptr<Catch::IReporterFactory>*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::TestCase*>(Catch::TestCase*, Catch::TestCase*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::MessageInfo*>(Catch::MessageInfo*, Catch::MessageInfo*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> >*>(std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> >*, std::unique_ptr<Catch::IExceptionTranslator const, std::default_delete<Catch::IExceptionTranslator const> >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::ISingleton**>(Catch::ISingleton**, Catch::ISingleton**):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::StringRef*>(Catch::StringRef*, Catch::StringRef*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::TestSpec::Pattern>*>(std::shared_ptr<Catch::TestSpec::Pattern>*, std::shared_ptr<Catch::TestSpec::Pattern>*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<unsigned long*>(unsigned long*, unsigned long*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::TestSpec::Filter*>(Catch::TestSpec::Filter*, Catch::TestSpec::Filter*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::clara::detail::Arg*>(Catch::clara::detail::Arg*, Catch::clara::detail::Arg*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::clara::detail::Opt*>(Catch::clara::detail::Opt*, Catch::clara::detail::Opt*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::clara::detail::HelpColumns*>(Catch::clara::detail::HelpColumns*, Catch::clara::detail::HelpColumns*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::clara::detail::Token*>(Catch::clara::detail::Token*, Catch::clara::detail::Token*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::clara::TextFlow::Column*>(Catch::clara::TextFlow::Column*, Catch::clara::TextFlow::Column*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::clara::TextFlow::Column::iterator*>(Catch::clara::TextFlow::Column::iterator*, Catch::clara::TextFlow::Column::iterator*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> >*>(std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> >*, std::unique_ptr<Catch::IStreamingReporter, std::default_delete<Catch::IStreamingReporter> >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::__cxx11::regex_traits<char>::_RegexMask*>(std::__cxx11::regex_traits<char>::_RegexMask*, std::__cxx11::regex_traits<char>::_RegexMask*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::pair<char, char>*>(std::pair<char, char>*, std::pair<char, char>*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::__detail::_State<char>*>(std::__detail::_State<char>*, std::__detail::_State<char>*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >*>(std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >*, std::pair<long, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::pair<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, int>*>(std::pair<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, int>*, std::pair<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, int>*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<__gnu_cxx::__normal_iterator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > > >(__gnu_cxx::__normal_iterator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >, __gnu_cxx::__normal_iterator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*, std::vector<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >, std::allocator<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > > > >):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > >*>(std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > >*, std::unique_ptr<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> >, std::default_delete<std::__cxx11::basic_ostringstream<char, std::char_traits<char>, std::allocator<char> > > >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<char*>(char*, char*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> >*>(std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> >*, std::unique_ptr<Catch::Detail::EnumInfo, std::default_delete<Catch::Detail::EnumInfo> >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*>(std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*, std::__cxx11::sub_match<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::__exception_ptr::exception_ptr*>(std::__exception_ptr::exception_ptr*, std::__exception_ptr::exception_ptr*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >*>(std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >*, std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>*>(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >*>(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestRunStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > > >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*>(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestGroupStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >*>(std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >*, std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::Node<Catch::TestCaseStats, Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::vector<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>, std::allocator<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*>(std::vector<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>, std::allocator<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*, std::vector<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode>, std::allocator<std::shared_ptr<Catch::CumulativeReporterBase<Catch::JunitReporter>::SectionNode> > >*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::AssertionStats*>(Catch::AssertionStats*, Catch::AssertionStats*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::SummaryColumn*>(Catch::SummaryColumn*, Catch::SummaryColumn*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::(anonymous namespace)::ColumnInfo*>(Catch::(anonymous namespace)::ColumnInfo*, Catch::(anonymous namespace)::ColumnInfo*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::SectionInfo*>(Catch::SectionInfo*, Catch::SectionInfo*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<Catch::TestCase const**>(Catch::TestCase const**, Catch::TestCase const**):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+void std::_Destroy<std::pair<unsigned long, Catch::TestCase const*>*>(std::pair<unsigned long, Catch::TestCase const*>*, std::pair<unsigned long, Catch::TestCase const*>*):
+    #####:  171:    _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  172:    {
+        -:  173:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  174:                       _Value_type;
+        -:  175:#if __cplusplus >= 201103L
+        -:  176:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  177:      static_assert(is_destructible<_Value_type>::value,
+        -:  178:		    "value type is destructible");
+        -:  179:#endif
+        -:  180:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  181:      if (std::is_constant_evaluated())
+        -:  182:	return _Destroy_aux<false>::__destroy(__first, __last);
+        -:  183:#endif
+        -:  184:      std::_Destroy_aux<__has_trivial_destructor(_Value_type)>::
+    #####:  185:	__destroy(__first, __last);
+    #####:  186:    }
+------------------
+        -:  187:
+        -:  188:  template<bool>
+        -:  189:    struct _Destroy_n_aux
+        -:  190:    {
+        -:  191:      template<typename _ForwardIterator, typename _Size>
+        -:  192:	static _GLIBCXX20_CONSTEXPR _ForwardIterator
+        -:  193:	__destroy_n(_ForwardIterator __first, _Size __count)
+        -:  194:	{
+        -:  195:	  for (; __count > 0; (void)++__first, --__count)
+        -:  196:	    std::_Destroy(std::__addressof(*__first));
+        -:  197:	  return __first;
+        -:  198:	}
+        -:  199:    };
+        -:  200:
+        -:  201:  template<>
+        -:  202:    struct _Destroy_n_aux<true>
+        -:  203:    {
+        -:  204:      template<typename _ForwardIterator, typename _Size>
+        -:  205:        static _ForwardIterator
+        -:  206:        __destroy_n(_ForwardIterator __first, _Size __count)
+        -:  207:	{
+        -:  208:	  std::advance(__first, __count);
+        -:  209:	  return __first;
+        -:  210:	}
+        -:  211:    };
+        -:  212:
+        -:  213:  /**
+        -:  214:   * Destroy a range of objects.  If the value_type of the object has
+        -:  215:   * a trivial destructor, the compiler should optimize all of this
+        -:  216:   * away, otherwise the objects' destructors must be invoked.
+        -:  217:   */
+        -:  218:  template<typename _ForwardIterator, typename _Size>
+        -:  219:    _GLIBCXX20_CONSTEXPR inline _ForwardIterator
+        -:  220:    _Destroy_n(_ForwardIterator __first, _Size __count)
+        -:  221:    {
+        -:  222:      typedef typename iterator_traits<_ForwardIterator>::value_type
+        -:  223:                       _Value_type;
+        -:  224:#if __cplusplus >= 201103L
+        -:  225:      // A deleted destructor is trivial, this ensures we reject such types:
+        -:  226:      static_assert(is_destructible<_Value_type>::value,
+        -:  227:		    "value type is destructible");
+        -:  228:#endif
+        -:  229:#if __cplusplus > 201703L && defined __cpp_lib_is_constant_evaluated
+        -:  230:      if (std::is_constant_evaluated())
+        -:  231:	return _Destroy_n_aux<false>::__destroy_n(__first, __count);
+        -:  232:#endif
+        -:  233:      return std::_Destroy_n_aux<__has_trivial_destructor(_Value_type)>::
+        -:  234:	__destroy_n(__first, __count);
+        -:  235:    }
+        -:  236:
+        -:  237:#if __cplusplus >= 201703L
+        -:  238:  template <typename _ForwardIterator>
+        -:  239:    _GLIBCXX20_CONSTEXPR inline void
+        -:  240:    destroy(_ForwardIterator __first, _ForwardIterator __last)
+        -:  241:    {
+        -:  242:      std::_Destroy(__first, __last);
+        -:  243:    }
+        -:  244:
+        -:  245:  template <typename _ForwardIterator, typename _Size>
+        -:  246:    _GLIBCXX20_CONSTEXPR inline _ForwardIterator
+        -:  247:    destroy_n(_ForwardIterator __first, _Size __count)
+        -:  248:    {
+        -:  249:      return std::_Destroy_n(__first, __count);
+        -:  250:    }
+        -:  251:#endif // C++17
+        -:  252:
+        -:  253:_GLIBCXX_END_NAMESPACE_VERSION
+        -:  254:} // namespace std
+        -:  255:
+        -:  256:#endif /* _STL_CONSTRUCT_H */
