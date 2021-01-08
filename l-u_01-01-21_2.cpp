@@ -11,8 +11,6 @@
 #include <libgen.h>
 #include <sys/types.h>
 #include <dirent.h>
-#include "catch_amalgamated.hpp"
-#define CATCH_CONFIG_MAIN
 
 using namespace std;
 
@@ -170,7 +168,7 @@ string getPhone()
 	return number;
 }
 
-int main()
+int run()
 {
 	bool init = false;
 	bool serverOn = false;

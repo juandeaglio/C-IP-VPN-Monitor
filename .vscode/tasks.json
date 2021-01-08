@@ -6,9 +6,9 @@
             "command": "/usr/bin/g++",
             "args": [
                 "-g",
-                "${file}",
+                "testing.cpp",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "testing"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
