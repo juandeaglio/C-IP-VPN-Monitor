@@ -1,0 +1,97 @@
+
+current dir is: /home/f32/Downloads/papa
+.llog file path: home/f32/.llog
+current IP: 47.144.17.23
+homeIP initiated as 47.144.17.23
+first loop run in home IP. lets start server
+configDir is: /run/media/f32/PNY256/01-01-21/nordvpn_start
+before command
+runcmd is: sudo openvpn us5597.nordvpn.com.tcp.ovpn &
+server ON. IP is: 99.999.99.99
+server ON. IP is: 99.999.99.99
+DISPLAY=:0 sudo -u f32 notify-send 'VPN launch success! IP is: 99.999.99.99' &
+ServerIP is: 99.999.99.99 Keep checking...
+current IP: 47.144.17.23
+first loop run in home IP. lets start server
+configDir is: /run/media/f32/PNY256/01-01-21/nordvpn_start
+before command
+runcmd is: sudo openvpn us5597.nordvpn.com.tcp.ovpn &
+server ON. IP is: 99.999.99.99
+server ON. IP is: 99.999.99.99
+DISPLAY=:0 sudo -u f32 notify-send 'VPN launch success! IP is: 99.999.99.99' &
+ServerIP is: 99.999.99.99 Keep checking...
+current IP: 47.144.17.23
+first loop run in home IP. lets start server
+configDir is: /run/media/f32/PNY256/01-01-21/nordvpn_start
+before command
+runcmd is: sudo openvpn us5597.nordvpn.com.tcp.ovpn &
+server ON. IP is: 99.999.99.99
+server ON. IP is: 99.999.99.99
+DISPLAY=:0 sudo -u f32 notify-send 'VPN launch success! IP is: 99.999.99.99' &
+ServerIP is: 99.999.99.99 Keep checking...
+current IP: 47.144.17.23
+first loop run in home IP. lets start server
+configDir is: /run/media/f32/PNY256/01-01-21/nordvpn_start
+before command
+runcmd is: sudo openvpn us5597.nordvpn.com.tcp.ovpn &
+server ON. IP is: 99.999.99.99
+server ON. IP is: 99.999.99.99
+DISPLAY=:0 sudo -u f32 notify-send 'VPN launch success! IP is: 99.999.99.99' &
+ServerIP is: 99.999.99.99 Keep checking...
+current IP: 47.144.17.23
+first loop run in home IP. lets start server
+configDir is: /run/media/f32/PNY256/01-01-21/nordvpn_start
+before command
+runcmd is: sudo openvpn us5597.nordvpn.com.tcp.ovpn &
+server ON. IP is: 99.999.99.99
+server ON. IP is: 99.999.99.99
+DISPLAY=:0 sudo -u f32 notify-send 'VPN launch success! IP is: 99.999.99.99' &
+ServerIP is: 99.999.99.99 Keep checking...
+current IP: 47.144.17.23
+first loop run in home IP. lets start server
+configDir is: /run/media/f32/PNY256/01-01-21/nordvpn_start
+before command
+runcmd is: sudo openvpn us5597.nordvpn.com.tcp.ovpn &
+server ON. IP is: 99.999.99.99
+server ON. IP is: 99.999.99.99
+DISPLAY=:0 sudo -u f32 notify-send 'VPN launch success! IP is: 99.999.99.99' &
+ServerIP is: 99.999.99.99 Keep checking...
+current IP: 47.144.17.23
+first loop run in home IP. lets start server
+configDir is: /run/media/f32/PNY256/01-01-21/nordvpn_start
+before command
+runcmd is: sudo openvpn us5597.nordvpn.com.tcp.ovpn &
+server ON. IP is: 99.999.99.99
+server ON. IP is: 99.999.99.99
+DISPLAY=:0 sudo -u f32 notify-send 'VPN launch success! IP is: 99.999.99.99' &
+ServerIP is: 99.999.99.99 Keep checking...
+current IP: 47.144.17.23
+first loop run in home IP. lets start server
+configDir is: /run/media/f32/PNY256/01-01-21/nordvpn_start
+before command
+runcmd is: sudo openvpn us5597.nordvpn.com.tcp.ovpn &
+server ON. IP is: 99.999.99.99
+server ON. IP is: 99.999.99.99
+DISPLAY=:0 sudo -u f32 notify-send 'VPN launch success! IP is: 99.999.99.99' &
+ServerIP is: 99.999.99.99 Keep checking...
+current IP: 47.144.17.23
+first loop run in home IP. lets start server
+configDir is: /run/media/f32/PNY256/01-01-21/nordvpn_start
+before command
+runcmd is: sudo openvpn us5597.nordvpn.com.tcp.ovpn &
+server ON. IP is: 99.999.99.99
+server ON. IP is: 99.999.99.99
+DISPLAY=:0 sudo -u f32 notify-send 'VPN launch success! IP is: 99.999.99.99' &
+ServerIP is: 99.999.99.99 Keep checking...
+current IP: 47.144.17.23
+first loop run in home IP. lets start server
+configDir is: /run/media/f32/PNY256/01-01-21/nordvpn_start
+before command
+runcmd is: sudo openvpn us5597.nordvpn.com.tcp.ovpn &
+server ON. IP is: 99.999.99.99
+server ON. IP is: 99.999.99.99
+DISPLAY=:0 sudo -u f32 notify-send 'VPN launch success! IP is: 99.999.99.99' &
+ServerIP is: 99.999.99.99 Keep checking...
+current IP: 47.144.17.23
+ALERT!!! in home IP with VPN server ON - shut down computer!
+ALERT (server ON in home IP)
