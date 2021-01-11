@@ -26,6 +26,7 @@ string susbdir;
 string phoneNum;
 char* c_time_string;
 
+
 string shellCommand(string cmd) 
 {
     string data;
@@ -90,7 +91,7 @@ string GetCurrentIP()
 {
 	const string text = shellCommand("curl -s http://checkip.dyndns.org/");
 
-    const regex vowels("[a-zA-Z<>/:'\n' ]");
+    const regex vowels("[a-zA-Z<>/:'\r\n' ]");
     stringstream result;
 
 	//Remove all HTML stuff and null terminator
@@ -145,7 +146,7 @@ void locateConfig(const char *name, int indent)
     closedir(dir);
 }
 
-string getPhone()
+string GetPhone()
 {
 	int i = 0;
 	string line;
@@ -161,5 +162,9 @@ string getPhone()
 	}
 	file.close();
 	return number;
+}
+void SetCntFile(string fileDir)
+{
+	cntfile = fileDir;
 }
 int run();
