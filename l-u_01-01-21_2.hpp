@@ -41,6 +41,8 @@ string homeIP;
 string serverIP;
 string currentIP;
 
+int countTimes = 0;
+
 void NotifySend(string message)
 {
 	string notify_success = "DISPLAY=:0 sudo -u ";

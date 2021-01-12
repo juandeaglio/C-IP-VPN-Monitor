@@ -3,29 +3,6 @@
 #include "l-u_01-01-21_2.hpp"
 using namespace std;
 
-TEST_CASE( "ShouldGetCurrentIP", "[testing]" ) 
-{
-    string ip = GetCurrentIP();
-    cout<<"current IP: "<<ip<<endl;
-    REQUIRE(ip.compare("") != 0);        
-}
-TEST_CASE( "ShouldShutDownWithNoIP", "[testing]" ) 
-{
-    SetPaths();
-    cout<<"logfile: " << logfile<<endl;
-    string ip = GetNoIP();
-    cout<<"current IP: "<<ip<<endl;
-    REQUIRE(ip.compare("") == 0);    
-    ShutDown("(over 15 sec) internet outage.");
-    REQUIRE(isShuttingDown);
-}
-TEST_CASE( "ShouldLocateConfig", "[testing]" )
-{
-    locateConfig("/run/media", 0);
-    cout<<"ConfigDir: "<<configDir<<"entryName: "<<endl<<entryName<<endl;
-    REQUIRE(configDir.compare("")!= 0);
-    REQUIRE(entryName.compare("")!= 0);
-}
 TEST_CASE( "ShouldSendShellCommand", "[testing]" )
 {
     const string text = shellCommand("curl -s http://checkip.dyndns.org/");
@@ -40,13 +17,17 @@ TEST_CASE( "ShouldStartServer", "[testing]" )
     string runcmd = StartServer();
     REQUIRE(runcmd.substr(0,12).compare("sudo openvpn") == 0);
 }
-TEST_CASE( "ShouldShutdownIfClientOn", "[testing]" )
+TEST_CASE( "ShouldGetCurrentIP", "[testing]" ) 
 {
-    if(CheckIfPIDExists("systemd"))
-    {
-        ShutDown("systemd ON on home IP");
-    }
-    REQUIRE(isShuttingDown);
+    string ip = GetCurrentIP();
+    REQUIRE(ip.compare("") != 0);        
+}
+TEST_CASE( "ShouldLocateConfig", "[testing]" )
+{
+    locateConfig("/run/media", 0);
+    InitializePaths();
+    REQUIRE(configDir.substr(0,14).compare("/run/media/"+user) == 0);
+    REQUIRE(entryName.compare("nordvpn_start") == 0);
 }
 TEST_CASE( "ShouldTurnServerOnAndChangeIP", "[testing]" )
 {
@@ -58,10 +39,24 @@ TEST_CASE( "ShouldTurnServerOnAndChangeIP", "[testing]" )
     REQUIRE(homeIP.compare(serverIP) != 0);
     REQUIRE(serverIP.compare(currentIP) == 0);
 }
-TEST_CASE( "", "" )
+TEST_CASE( "ShouldShutDownWithNoIP", "[testing]" ) 
 {
-
+    SetPaths();
+    string ip = GetNoIP();
+    REQUIRE(ip.compare("") == 0);    
+    ShutDown("(over 15 sec) internet outage.");
+    REQUIRE(isShuttingDown);
 }
+TEST_CASE( "ShouldShutdownIfClientOn", "[testing]" )
+{
+    if(CheckIfPIDExists("systemd"))
+    {
+        ShutDown("systemd ON on home IP");
+    }
+    REQUIRE(isShuttingDown);
+}
+
+
 /*
 TEST_CASE( "ShouldWriteToLog", "[testing]")
 {
