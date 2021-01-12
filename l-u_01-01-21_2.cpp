@@ -5,7 +5,10 @@
 using namespace std;
 
 typedef unsigned char byte;
-
+int main()
+{
+	run();
+}
 
 int run()
 {
@@ -21,12 +24,7 @@ int run()
 ////////////////////////////////////////////////////////////////////////////////
 
 	//Define main variables - homedir, user etc.
-	string output = shellCommand("users");
-    const regex vowels("\n+");
-	string result = std::regex_replace(output, vowels, "");
-	user = result;
-	homedir = "home/" + user;
-	logfile = homedir + "/.llog";
+	SetPaths();
 	SetCntFile(homedir + "/.cache/xpncnt/expcnt");
 	phoneNum = GetPhone();
 	//cout<<"phoneNum is: "<<phoneNum<<endl;
@@ -64,7 +62,7 @@ int run()
 				if(serverOn)
 				{ 	
 					if(timeout >= 15);	//inet outage too long, shutting down
-						//ShutDown("(over 15 sec) internet outage.");
+						ShutDown("(over 15 sec) internet outage.");
 
 					timeout++;// = timeout + 500;
 				}	//end of if(serverOn)
@@ -85,14 +83,14 @@ int run()
 					delay = 1;
 
 					//any crazy case if qbittorrent or transmission on when home IP - shot system down
-					if(shellCommand("pidof qbittorrent") != "")
+					if(CheckIfPIDExists("qbittorrent"))
 					{
-						//ShutDown("Qbittorrent ON on home IP");
+						ShutDown("Qbittorrent ON on home IP");
 					}
 
-					if(shellCommand("pidof transmission-gtk") != "")
+					if(CheckIfPIDExists("pidof transmission-gtk"))
 					{
-						//ShutDown("Transmission ON in home IP");
+						ShutDown("Transmission ON in home IP");
 					}
 
 					//let's run the server
@@ -172,7 +170,7 @@ int run()
 					else	//ALERT!!! in home IP with VPN server ON - shut down computer!
 					{
 						printf("ALERT!!! in home IP with VPN server ON - shut down computer!\n");
-						//ShutDown("ALERT (server ON in home IP)");
+						ShutDown("ALERT (server ON in home IP)");
 					}
 				}
 				//in server IP. keep checking IP. (serverIP is assigned in GetCurrentIP())

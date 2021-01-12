@@ -12,6 +12,7 @@
 using namespace std;
 typedef unsigned char byte;
 
+bool isShuttingDown = false;
 FILE *fp;
 string homedir;
 string user;
@@ -49,23 +50,13 @@ void ShutDown(string cmd)
 	string phonemsg;
 	string logtext;
 
-	//Leave a record in log file
-	time_t current_time;
-	char* c_time_string;
-	current_time = time(NULL);
-	c_time_string = ctime(&current_time);
-
-	printf("Current time is %s\n", c_time_string);
-
 	//construct log file text based on incoming message.
 	logtext = "Poweroff called due to ";
 	logtext += cmd;
-	logtext += " at %s\n ";
 
 	//write log file text
-	fp = fopen(logfile.c_str(), "a");
-	fprintf(fp, logtext.c_str(), c_time_string);
-	fclose(fp);
+	//WriteToLog(logtext);
+	
 
 	//construct phone message command based on incoming message.
 	phonemsg = "echo ";
@@ -81,15 +72,24 @@ void ShutDown(string cmd)
 
 	sleep(1);
 
-	//shutdown comp
-	fp = popen("poweroff", "r");
-	pclose(fp);
-	//return 0;
+	isShuttingDown = true;
 }
-
+bool WriteToLog(string logtext)
+{	
+	time_t current_time;
+	char* c_time_string;
+	current_time = time(NULL);
+	c_time_string = ctime(&current_time);
+	logtext += c_time_string;
+	printf("Current time is %s\n", c_time_string);
+	fp = fopen(logfile.c_str(), "a");
+	int status = fprintf(fp, logtext.c_str());
+	fclose(fp);
+	return status >= 0;
+}
 string GetCurrentIP()
 {
-	const string text = shellCommand("curl -s http://checkip.dyndns.org/");
+	const string text = GetWebRequest("http://checkip.dyndns.org/");
 
     const regex vowels("[a-zA-Z<>/:'\r\n' ]");
     stringstream result;
@@ -99,6 +99,10 @@ string GetCurrentIP()
 
 	//return string retreived from stream
 	return result.str();
+}
+string GetNoIP()
+{
+	return "";
 }
 
 void locateConfig(const char *name, int indent)
@@ -162,6 +166,27 @@ string GetPhone()
 	}
 	file.close();
 	return number;
+}
+void SetPaths()
+{
+	string output = GetUsers();
+    const regex vowels("\n+");
+	string result = std::regex_replace(output, vowels, "");
+	user = result;
+	homedir = "home/" + user;
+	logfile = homedir + "/.llog";
+}
+string GetWebRequest(string website)
+{
+	return shellCommand("curl -s " + website);
+}
+string GetUsers()
+{
+ 	return shellCommand("users");
+}
+bool CheckIfPIDExists(string processName)
+{
+	return shellCommand("pidof qbittorrent").compare("") == 0;
 }
 void SetCntFile(string fileDir)
 {
