@@ -9,7 +9,11 @@
 #include <libgen.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <future>
+#include <thread>
+#include <chrono>
 using namespace std;
+
 typedef unsigned char byte;
 
 bool isShuttingDown = false;
@@ -26,6 +30,15 @@ int i = 0;
 string susbdir;
 string phoneNum;
 char* c_time_string;
+string workdir;
+bool init = false;
+bool serverOn = false;
+bool cleanedup = false;
+int delay = 1;	
+string serverFile = "";
+string homeIP;
+string serverIP;
+string currentIP;
 
 string shellCommand(string cmd) 
 {
@@ -184,11 +197,87 @@ void SetCntFile(string fileDir)
 }
 void SetPaths()
 {
+	
+}
+void InitializePaths()
+{
 	string output = GetUsers();
     const regex vowels("\n+");
 	string result = std::regex_replace(output, vowels, "");
 	user = result;
 	homedir = "home/" + user;
 	logfile = homedir + "/.llog";
+	SetCntFile(homedir + "/.cache/xpncnt/expcnt");
+	phoneNum = GetPhone();
+	//cout<<"phoneNum is: "<<phoneNum<<endl;
+	char cwd[100];
+	char * maindir = getcwd(cwd, sizeof(cwd));
+	workdir = maindir;
+	printf("current dir is: %s\n", maindir);
+}
+void functionRun();
+string StartServer()
+{
+	printf("first loop run in home IP. lets start server\n");
+	string line;
+	printf("configDir is: %s\n", configDir.c_str());
+	ifstream myfile (configDir + "/autho.txt");
+	ofstream myfile1 ("autho.txt");
+
+	while (getline(myfile,line))
+	{
+		myfile1 << line << '\n';
+	}
+	myfile.close();
+	myfile1.close();
+
+	string configPath = configDir + "/";
+	configPath += config;
+	ifstream myfile2 (configPath);
+	ofstream myfile3 (config);
+
+	while (getline(myfile2,line))
+	{
+		myfile3 << line << '\n';
+	}
+	myfile2.close();
+	myfile3.close();
+	
+	printf("before command\n");
+	string runcmd = "sudo openvpn " + config;
+	runcmd += " &";	
+	cout<<"runcmd is: "<<runcmd<<endl;
+	fp = popen(runcmd.c_str(), "r");
+	pclose(fp);
+	sleep(3); //wait until VPN starts
+	return runcmd;
+}
+void WaitForVPNConnection()
+{
+	while(!serverOn)
+	{
+		if(currentIP.compare(homeIP) == 0)
+		{
+			currentIP = GetCurrentIP();
+			sleep(1);
+		}
+		
+		else
+		{
+			serverIP = currentIP;
+			printf("server ON. Current IP is: %s, server IP is: %s\n", currentIP.c_str(), serverIP.c_str());
+			serverOn = true;
+			string notify_success = "DISPLAY=:0 sudo -u ";
+			notify_success += user;
+			notify_success += " notify-send '";
+			notify_success += "VPN launch success! IP is: ";								
+			notify_success += serverIP;
+			notify_success += "' &";
+
+			cout<<notify_success<<endl;
+			fp = popen(notify_success.c_str(), "r");
+			pclose(fp);
+		}
+	}
 }
 int run();
