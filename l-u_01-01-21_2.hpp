@@ -27,7 +27,6 @@ string susbdir;
 string phoneNum;
 char* c_time_string;
 
-
 string shellCommand(string cmd) 
 {
     string data;
@@ -44,6 +43,10 @@ string shellCommand(string cmd)
 		pclose(fp);
     }
     return data;
+}
+string GetWebRequest(string website)
+{
+	return shellCommand("curl -s " + website);
 }
 void ShutDown(string cmd)
 {
@@ -167,19 +170,6 @@ string GetPhone()
 	file.close();
 	return number;
 }
-void SetPaths()
-{
-	string output = GetUsers();
-    const regex vowels("\n+");
-	string result = std::regex_replace(output, vowels, "");
-	user = result;
-	homedir = "home/" + user;
-	logfile = homedir + "/.llog";
-}
-string GetWebRequest(string website)
-{
-	return shellCommand("curl -s " + website);
-}
 string GetUsers()
 {
  	return shellCommand("users");
@@ -191,5 +181,14 @@ bool CheckIfPIDExists(string processName)
 void SetCntFile(string fileDir)
 {
 	cntfile = fileDir;
+}
+void SetPaths()
+{
+	string output = GetUsers();
+    const regex vowels("\n+");
+	string result = std::regex_replace(output, vowels, "");
+	user = result;
+	homedir = "home/" + user;
+	logfile = homedir + "/.llog";
 }
 int run();

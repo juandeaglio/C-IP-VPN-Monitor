@@ -33,7 +33,7 @@ TEST_CASE( "ShouldSendShellCommand", "[testing]" )
 }
 TEST_CASE( "ShouldCheckIfProcessExists", "[testing] ")
 {
-    REQUIRE();
+    REQUIRE(CheckIfPIDExists("systemd"));
 }
 /*
 TEST_CASE( "ShouldWriteToLog", "[testing]")
