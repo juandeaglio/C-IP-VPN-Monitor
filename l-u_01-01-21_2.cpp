@@ -38,34 +38,23 @@ void functionRun()
 		cout<<"current IP: "<<currentIP<<endl;
 		timeout = 0;
 
-		if(currentIP == "")
+		if(currentIP.compare("") == 0)
 		{
 			delay = 1;
-			//On internet outage 
 			if(serverOn)
 			{ 	
-				if(timeout >= 15);	//inet outage too long, shutting down
+				if(timeout >= 15);
 					ShutDown("(over 15 sec) internet outage.");
 
-				timeout++;// = timeout + 500;
-			}	//end of if(serverOn)
-		}
-		else //Got IP
-		{
-			//initiate homeIP on first appearance of internet
-			if(init == false)
-			{
-				homeIP = currentIP;
-				init = true;
-				cout<<"homeIP initiated as "<<homeIP<<endl;
+				timeout++;
 			}
-			//Home IP... 
-			if(homeIP == currentIP)
+		}
+		else
+		{
+			InitializeHomeIP();
+			if(homeIP.compare(currentIP) == 0)
 			{
-				//sleep delay - 1 sec for HOME IP
 				delay = 1;
-
-				//any crazy case if qbittorrent or transmission on when home IP - shot system down
 				if(CheckIfPIDExists("qbittorrent"))
 				{
 					ShutDown("Qbittorrent ON on home IP");
@@ -82,15 +71,13 @@ void functionRun()
 					StartServer();
 					WaitForVPNConnection();
 				}
-				else	//ALERT!!! in home IP with VPN server ON - shut down computer!
+				else
 				{
 					printf("ALERT!!! in home IP with VPN server ON - shut down computer!\n");
 					ShutDown("ALERT (server ON in home IP)");
 				}
 			}
-			//in server IP. keep checking IP. (serverIP is assigned in GetCurrentIP())
 			if(currentIP == serverIP)
-				//Clean up. delete server and autho.txt files from working dir
 				if(!cleanedup)
 				{
 					string rmcmd = "rm autho.txt " + config;
@@ -99,8 +86,8 @@ void functionRun()
 					cleanedup = true;
 				}
 				printf("ServerIP is: %s Keep checking...\n", serverIP.c_str());
-				delay = 5;	//let's keep it checking every 5 sec
-		}		//end of IP else
+				delay = 5;
+		}
 	}
 	sleep(delay);
 }

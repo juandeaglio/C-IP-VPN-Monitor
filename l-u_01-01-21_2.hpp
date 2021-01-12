@@ -280,6 +280,26 @@ bool WaitForVPNConnection()
 	}
 	return false;
 }
-
+void InitializeHomeIP()
+{
+	if(init == false)
+	{
+		homeIP = GetCurrentIP();
+		init = true;
+		cout<<"homeIP initiated as "<<homeIP<<endl;
+	}
+}
+void InitializeHomeIP(string ip)
+{
+	if(init == false)
+	{
+		if(ip.compare("") != 0)
+		{
+			homeIP = ip;
+			init = true;
+			cout<<"homeIP initiated as "<<homeIP<<endl;
+		}
+	}
+}
 void functionRun();
 int run();

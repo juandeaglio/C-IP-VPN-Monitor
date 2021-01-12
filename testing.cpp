@@ -40,16 +40,28 @@ TEST_CASE( "ShouldStartServer", "[testing]" )
     string runcmd = StartServer();
     REQUIRE(runcmd.substr(0,12).compare("sudo openvpn") == 0);
 }
+TEST_CASE( "ShouldShutdownIfClientOn", "[testing]" )
+{
+    if(CheckIfPIDExists("systemd"))
+    {
+        ShutDown("systemd ON on home IP");
+    }
+    REQUIRE(isShuttingDown);
+}
 TEST_CASE( "ShouldTurnServerOnAndChangeIP", "[testing]" )
 {
-    homeIP = "123.456";
+    InitializePaths();
+    InitializeHomeIP("123.456.789.012");
     currentIP = "47.144.17.23";
     WaitForVPNConnection();
     REQUIRE(serverOn);
     REQUIRE(homeIP.compare(serverIP) != 0);
     REQUIRE(serverIP.compare(currentIP) == 0);
 }
+TEST_CASE( "", "" )
+{
 
+}
 /*
 TEST_CASE( "ShouldWriteToLog", "[testing]")
 {
