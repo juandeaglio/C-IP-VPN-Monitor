@@ -40,16 +40,16 @@ TEST_CASE( "ShouldStartServer", "[testing]" )
     string runcmd = StartServer();
     REQUIRE(runcmd.substr(0,12).compare("sudo openvpn") == 0);
 }
-TEST_CASE( "ShouldStopWaitingForConnectionWhenCurrentIPChanges", "[testing]" )
+TEST_CASE( "ShouldTurnServerOnAndChangeIP", "[testing]" )
 {
-    homeIP = "47.144.17.23";
-    currentIP = "123.456";
-    
+    homeIP = "123.456";
+    currentIP = "47.144.17.23";
     WaitForVPNConnection();
     REQUIRE(serverOn);
     REQUIRE(homeIP.compare(serverIP) != 0);
     REQUIRE(serverIP.compare(currentIP) == 0);
 }
+
 /*
 TEST_CASE( "ShouldWriteToLog", "[testing]")
 {

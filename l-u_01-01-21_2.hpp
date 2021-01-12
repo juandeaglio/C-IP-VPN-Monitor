@@ -12,6 +12,7 @@
 #include <future>
 #include <thread>
 #include <chrono>
+
 using namespace std;
 
 typedef unsigned char byte;
@@ -40,6 +41,18 @@ string homeIP;
 string serverIP;
 string currentIP;
 
+void NotifySend(string message)
+{
+	string notify_success = "DISPLAY=:0 sudo -u ";
+	notify_success += user;
+	notify_success += " notify-send '";
+	notify_success += message;
+	notify_success += "' &";
+
+	cout<<notify_success<<endl;
+	fp = popen(notify_success.c_str(), "r");
+	pclose(fp);
+}
 string shellCommand(string cmd) 
 {
     string data;
@@ -215,7 +228,6 @@ void InitializePaths()
 	workdir = maindir;
 	printf("current dir is: %s\n", maindir);
 }
-void functionRun();
 string StartServer()
 {
 	printf("first loop run in home IP. lets start server\n");
@@ -252,32 +264,22 @@ string StartServer()
 	sleep(3); //wait until VPN starts
 	return runcmd;
 }
-void WaitForVPNConnection()
+bool WaitForVPNConnection()
 {
 	while(!serverOn)
 	{
-		if(currentIP.compare(homeIP) == 0)
+		string currentIP = GetCurrentIP();
+		if(currentIP.compare(homeIP) != 0)
 		{
-			currentIP = GetCurrentIP();
-			sleep(1);
-		}
-		
-		else
-		{
-			serverIP = currentIP;
-			printf("server ON. Current IP is: %s, server IP is: %s\n", currentIP.c_str(), serverIP.c_str());
+			string ip = currentIP;
+			serverIP = ip;
 			serverOn = true;
-			string notify_success = "DISPLAY=:0 sudo -u ";
-			notify_success += user;
-			notify_success += " notify-send '";
-			notify_success += "VPN launch success! IP is: ";								
-			notify_success += serverIP;
-			notify_success += "' &";
-
-			cout<<notify_success<<endl;
-			fp = popen(notify_success.c_str(), "r");
-			pclose(fp);
+			NotifySend("VPN launch success! IP is: " + serverIP);
+			return true;
 		}
 	}
+	return false;
 }
+
+void functionRun();
 int run();
