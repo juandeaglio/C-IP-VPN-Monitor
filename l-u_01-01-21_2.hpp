@@ -128,7 +128,6 @@ void locateConfig(const char *name, int indent)
 {
     DIR *dir;
     struct dirent *entry;
-
     if (!(dir = opendir(name)))
         return;
 
@@ -137,11 +136,9 @@ void locateConfig(const char *name, int indent)
 		char path[1024];
         if (entry->d_type == DT_DIR) 
 		{
-            //char path[1024];
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
             snprintf(path, sizeof(path), "%s/%s", name, entry->d_name);
-            //printf("%*s[%s]\n", indent, "", entry->d_name);
 			if(!strcmp(entry->d_name, "nordvpn_start"))
 			{
 				configDir = path;
@@ -156,13 +153,11 @@ void locateConfig(const char *name, int indent)
 		{
 			if(entryName == "nordvpn_start")
 			{
-				//list files in directory
 				if(!i)
 					creds = entry->d_name;
 				else
 					config = entry->d_name;	
 				i++;			
-				//cout<<entry->d_name<<endl;
 			}
         }
     }
@@ -174,8 +169,6 @@ string GetPhone()
 	int i = 0;
 	string line;
 	string number;
-
-	//reading from expcnt file
 	ifstream file(cntfile);
 	while(getline(file, line)) 
 	{
@@ -208,11 +201,9 @@ void InitializePaths()
 	logfile = homedir + "/.llog";
 	SetCntFile(homedir + "/.cache/xpncnt/expcnt");
 	phoneNum = GetPhone();
-	//cout<<"phoneNum is: "<<phoneNum<<endl;
 	char cwd[100];
 	char * maindir = getcwd(cwd, sizeof(cwd));
 	workdir = maindir;
-	printf("current dir is: %s\n", maindir);
 }
 string StartServer()
 {
@@ -220,7 +211,6 @@ string StartServer()
 	string line;
 	ifstream myfile (configDir + "/autho.txt");
 	ofstream myfile1 ("autho.txt");
-
 	while (getline(myfile,line))
 	{
 		myfile1 << line << '\n';

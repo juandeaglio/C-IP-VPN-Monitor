@@ -30,6 +30,13 @@ TEST_CASE( "ShouldGetCurrentIP", "[testing]" )
     string ip = GetCurrentIP();
     REQUIRE(ip.compare("") != 0);        
 }
+TEST_CASE( "ShouldNotLocateConfig", "[testing]" )
+{
+    InitializePaths();
+    locateConfig("/home/f32/Videos", 0);
+    REQUIRE(configDir.substr(0,14).compare("/run/media/"+user) != 0);
+    REQUIRE(entryName.compare("nordvpn_start") != 0);
+}
 TEST_CASE( "ShouldLocateConfig", "[testing]" )
 {
     InitializePaths();
@@ -37,7 +44,6 @@ TEST_CASE( "ShouldLocateConfig", "[testing]" )
     REQUIRE(configDir.substr(0,14).compare("/run/media/"+user) == 0);
     REQUIRE(entryName.compare("nordvpn_start") == 0);
 }
-
 TEST_CASE( "ShouldTurnServerOnAndChangeIP", "[testing]" )
 {
     SetupVPNIPAndHomeIP();
