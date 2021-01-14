@@ -42,7 +42,6 @@ string serverIP;
 string currentIP;
 
 int countTimes = 0;
-
 void NotifySend(string message)
 {
 	string notify_success = "DISPLAY=:0 sudo -u ";
@@ -303,5 +302,71 @@ void InitializeHomeIP(string ip)
 		}
 	}
 }
-void functionRun();
+bool IsVPNActive()
+{
+	int timeout = 0;
+	char pidbuf[50];
+	currentIP = GetCurrentIP();
+	cout<<"current IP: "<<currentIP<<endl;
+	timeout = 0;
+	if(currentIP.compare("") == 0)
+	{
+		delay = 1;
+		if(serverOn)
+		{ 	
+			if(timeout >= 15);
+			{
+				ShutDown("(over 15 sec) internet outage.");
+				return false;
+			}
+			timeout++;
+		}
+	}
+	else
+	{	
+		if(currentIP == serverIP)
+		{
+			if(!cleanedup)
+			{
+				string rmcmd = "rm autho.txt " + config;
+				fp = popen(rmcmd.c_str(), "r");
+				pclose(fp);
+				cleanedup = true;
+			}
+			return true;
+		}
+		else if(homeIP.compare(currentIP) == 0)
+		{
+			printf("ALERT!!! in home IP with VPN server ON - shut down computer!\n");
+			ShutDown("ALERT (server ON in home IP)");
+			return false;
+		}
+		countTimes++;
+		printf("ServerIP is: %s Keep checking...\n", serverIP.c_str());
+		delay = 5;
+	}
+	return false;
+}
+void SetupVPN()
+{
+	InitializeHomeIP();
+	if(homeIP.compare(currentIP) == 0)
+	{
+		delay = 1;
+		if(CheckIfPIDExists("qbittorrent"))
+		{
+			ShutDown("Qbittorrent ON on home IP");
+		}
+
+		if(CheckIfPIDExists("pidof transmission-gtk"))
+		{
+			ShutDown("Transmission ON in home IP");
+		}
+		if(serverOn == false) 
+		{
+			StartServer();
+			WaitForVPNConnection();
+		}
+	}
+}
 int run();

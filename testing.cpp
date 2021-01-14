@@ -3,6 +3,14 @@
 #include "l-u_01-01-21_2.hpp"
 using namespace std;
 
+void SetupVPNIPAndHomeIP()
+{
+    InitializePaths();
+    InitializeHomeIP("123.456.789.012");
+    currentIP = "47.144.17.23";
+    WaitForVPNConnection();
+}
+
 TEST_CASE( "ShouldSendShellCommand", "[testing]" )
 {
     const string text = shellCommand("curl -s http://checkip.dyndns.org/");
@@ -31,10 +39,7 @@ TEST_CASE( "ShouldLocateConfig", "[testing]" )
 }
 TEST_CASE( "ShouldTurnServerOnAndChangeIP", "[testing]" )
 {
-    InitializePaths();
-    InitializeHomeIP("123.456.789.012");
-    currentIP = "47.144.17.23";
-    WaitForVPNConnection();
+    SetupVPNIPAndHomeIP();
     REQUIRE(serverOn);
     REQUIRE(homeIP.compare(serverIP) != 0);
     REQUIRE(serverIP.compare(currentIP) == 0);
@@ -55,7 +60,37 @@ TEST_CASE( "ShouldShutdownIfClientOn", "[testing]" )
     }
     REQUIRE(isShuttingDown);
 }
-
+TEST_CASE( "ShouldTurnServerOnAndCheckVPN", "[testing]" )
+{
+    SetupVPNIPAndHomeIP();
+    for(int i = 0; i < 10; i++)
+    {
+        printf("Server ip is equal to ");
+        IsVPNActive();
+    }
+    REQUIRE(IsVPNActive());
+}
+TEST_CASE( "ShouldShutdownServerAfterIPChange", "[testing]")
+{
+    SetupVPNIPAndHomeIP();
+    for(int i = 0; i < 10; i++)
+    {
+        if(i >= 9)
+        {
+            homeIP = "47.144.17.23";
+            serverIP = "123.456.789.012";
+            printf("Home IP is now equal to %s\n", homeIP.c_str());
+        }
+        else
+        {
+            printf("Server ip is equal to ");
+        }
+        
+        IsVPNActive();
+    }
+    REQUIRE(!IsVPNActive());
+    REQUIRE(isShuttingDown);
+}
 
 /*
 TEST_CASE( "ShouldWriteToLog", "[testing]")
