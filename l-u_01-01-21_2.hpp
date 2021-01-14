@@ -57,7 +57,6 @@ void NotifySend(string message)
 string shellCommand(string cmd) 
 {
     string data;
-    //FILE * stream;
     const int max_buffer = 256;
     char buffer[max_buffer];
     cmd.append(" 2>&1");
@@ -80,15 +79,9 @@ void ShutDown(string cmd)
 	string phonemsg;
 	string logtext;
 
-	//construct log file text based on incoming message.
 	logtext = "Poweroff called due to ";
 	logtext += cmd;
 
-	//write log file text
-	//WriteToLog(logtext);
-	
-
-	//construct phone message command based on incoming message.
 	phonemsg = "echo ";
 	phonemsg += "'Poweroff called due to ";
 	phonemsg += cmd;
@@ -96,7 +89,6 @@ void ShutDown(string cmd)
 	phonemsg +=  phoneNum;
 	phonemsg +=  "@txt.att.net";
 
-	//send ssmtp message on my cellphone
 	fp = popen(phonemsg.c_str(), "r");
 	pclose(fp);
 
@@ -111,7 +103,6 @@ bool WriteToLog(string logtext)
 	current_time = time(NULL);
 	c_time_string = ctime(&current_time);
 	logtext += c_time_string;
-	printf("Current time is %s\n", c_time_string);
 	fp = fopen(logfile.c_str(), "a");
 	int status = fprintf(fp, logtext.c_str());
 	fclose(fp);
@@ -124,10 +115,8 @@ string GetCurrentIP()
     const regex vowels("[a-zA-Z<>/:'\r\n' ]");
     stringstream result;
 
-	//Remove all HTML stuff and null terminator
     regex_replace(ostream_iterator<char>(result), text.begin(), text.end(), vowels, "");
 
-	//return string retreived from stream
 	return result.str();
 }
 string GetNoIP()
@@ -209,10 +198,6 @@ void SetCntFile(string fileDir)
 {
 	cntfile = fileDir;
 }
-void SetPaths()
-{
-	
-}
 void InitializePaths()
 {
 	string output = GetUsers();
@@ -233,7 +218,6 @@ string StartServer()
 {
 	printf("first loop run in home IP. lets start server\n");
 	string line;
-	printf("configDir is: %s\n", configDir.c_str());
 	ifstream myfile (configDir + "/autho.txt");
 	ofstream myfile1 ("autho.txt");
 
@@ -357,12 +341,11 @@ void SetupVPN()
 		{
 			ShutDown("Qbittorrent ON on home IP");
 		}
-
-		if(CheckIfPIDExists("pidof transmission-gtk"))
+		else if(CheckIfPIDExists("pidof transmission-gtk"))
 		{
 			ShutDown("Transmission ON in home IP");
 		}
-		if(serverOn == false) 
+		else if(serverOn == false) 
 		{
 			StartServer();
 			WaitForVPNConnection();

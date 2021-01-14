@@ -32,11 +32,12 @@ TEST_CASE( "ShouldGetCurrentIP", "[testing]" )
 }
 TEST_CASE( "ShouldLocateConfig", "[testing]" )
 {
-    locateConfig("/run/media", 0);
     InitializePaths();
+    locateConfig("/run/media", 0);
     REQUIRE(configDir.substr(0,14).compare("/run/media/"+user) == 0);
     REQUIRE(entryName.compare("nordvpn_start") == 0);
 }
+
 TEST_CASE( "ShouldTurnServerOnAndChangeIP", "[testing]" )
 {
     SetupVPNIPAndHomeIP();
@@ -46,7 +47,7 @@ TEST_CASE( "ShouldTurnServerOnAndChangeIP", "[testing]" )
 }
 TEST_CASE( "ShouldShutDownWithNoIP", "[testing]" ) 
 {
-    SetPaths();
+    InitializePaths();
     string ip = GetNoIP();
     REQUIRE(ip.compare("") == 0);    
     ShutDown("(over 15 sec) internet outage.");
