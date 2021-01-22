@@ -1,5 +1,3 @@
-//developed from launcher-usb2_jan16-29.c working version
-//added shutdown counter on internet outage
 #include "l-u_01-01-21_2.hpp"
 
 using namespace std;
@@ -9,25 +7,32 @@ int main()
 {
 	run();
 }
-
-int run()
+void* CheckVPNEveryNSeconds()
+{
+	IsVPNActive();
+	sleep(delay);
+	pthread_exit(NULL);
+}
+void run()
 {
 	InitializePaths();
-	printf(".llog file path: %s\n", logfile.c_str());
-
-	if(!config.compare(""))	//empty string
+	if(!config.compare(""))	
 	{
 		locateConfig("/run/media", 0);
 		sleep(1);
 	}
 	SetupVPN();
+	printf("setup\n");
+	pthread_t vpnThread;
+	int rc;
+	int i = 0;
 	while(1)
 	{
-		IsVPNActive();
-		sleep(delay);
+		if (pthread_create(&vpnThread, NULL, CheckVPNEveryNSeconds, (void*)NULL) != 0) 
+		{
+			cout << "Error:unable to create thread," << rc << endl;
+			exit(-1);
+      	}
 	}
-	return 0;
-} 
-
-
-
+	pthread_exit(NULL);
+}

@@ -5,11 +5,11 @@
             "label": "C/C++: g++ build active file",
             "command": "/usr/bin/g++",
             "args": [
-                "-g",
                 "testing.cpp",
                 "-o",
                 "testing",
-                "--coverage"
+                "-g",
+                "-pthread"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

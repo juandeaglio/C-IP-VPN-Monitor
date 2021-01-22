@@ -9,9 +9,7 @@
 #include <libgen.h>
 #include <sys/types.h>
 #include <dirent.h>
-#include <future>
-#include <thread>
-#include <chrono>
+#include "pthread.h"
 
 using namespace std;
 
@@ -244,6 +242,11 @@ bool WaitForVPNConnection()
 	while(!serverOn)
 	{
 		string currentIP = GetCurrentIP();
+		if(countTimes > 5 && countTimes < 40)
+			currentIP == "123.456.789.012";
+		else
+			currentIP == "";
+		
 		if(currentIP.compare(homeIP) != 0)
 		{
 			string ip = currentIP;
@@ -252,6 +255,7 @@ bool WaitForVPNConnection()
 			NotifySend("VPN launch success! IP is: " + serverIP);
 			return true;
 		}
+		countTimes++;
 	}
 	return false;
 }
@@ -342,4 +346,5 @@ void SetupVPN()
 		}
 	}
 }
-int run();
+void* CheckVPNEveryNSeconds();
+void run();
