@@ -10,7 +10,8 @@ int main()
 	strcpy(regusr, usr.c_str());
 	regusr [ strcspn(regusr, "\r\n") ] = 0;
 	printf("username is: %s\n", regusr);
-
+	
+	SetupPaths();
 	ConstructMessages();
 	readData();
 

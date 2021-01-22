@@ -1,119 +1,29 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
-#include "l-u_01-01-21_2.hpp"
+#include "passwordmanager.hpp"
 using namespace std;
 
-void SetupVPNIPAndHomeIP()
-{
-    InitializePaths();
-    InitializeHomeIP("123.456.789.012");
-    currentIP = "47.144.17.23";
-    WaitForVPNConnection();
+TEST_CASE( "ShouldFindPasswordFile", "[utility]" )
+{	
+    string passwordFile = FindPasswordFile();
+    REQUIRE(passwordFile.compare("") != 0);
 }
-
-TEST_CASE( "ShouldSendShellCommand", "[testing]" )
+TEST_CASE( "PasswordManagingFunctions", "[manager]")
 {
-    const string text = shellCommand("curl -s http://checkip.dyndns.org/");
-    REQUIRE(text.compare("")!= 0);
-}
-TEST_CASE( "ShouldCheckIfProcessExists", "[testing] ")
-{
-    REQUIRE(CheckIfPIDExists("systemd"));
-}
-TEST_CASE( "ShouldStartServer", "[testing]" )
-{
-    string runcmd = StartServer();
-    REQUIRE(runcmd.substr(0,12).compare("sudo openvpn") == 0);
-}
-TEST_CASE( "ShouldGetCurrentIP", "[testing]" ) 
-{
-    string ip = GetCurrentIP();
-    REQUIRE(ip.compare("") != 0);        
-}
-TEST_CASE( "ShouldNotLocateConfig", "[testing]" )
-{
-    InitializePaths();
-    locateConfig("/home/f32/Videos", 0);
-    REQUIRE(configDir.substr(0,14).compare("/run/media/"+user) != 0);
-    REQUIRE(entryName.compare("nordvpn_start") != 0);
-}
-TEST_CASE( "ShouldLocateConfig", "[testing]" )
-{
-    InitializePaths();
-    locateConfig("/run/media", 0);
-    REQUIRE(configDir.substr(0,14).compare("/run/media/"+user) == 0);
-    REQUIRE(entryName.compare("nordvpn_start") == 0);
-}
-TEST_CASE( "ShouldTurnServerOnAndChangeIP", "[testing]" )
-{
-    SetupVPNIPAndHomeIP();
-    REQUIRE(serverOn);
-    REQUIRE(homeIP.compare(serverIP) != 0);
-    REQUIRE(serverIP.compare(currentIP) == 0);
-}
-TEST_CASE( "ShouldShutDownWithNoIP", "[testing]" ) 
-{
-    InitializePaths();
-    string ip = GetNoIP();
-    REQUIRE(ip.compare("") == 0);    
-    ShutDown("(over 15 sec) internet outage.");
-    REQUIRE(isShuttingDown);
-}
-TEST_CASE( "ShouldShutdownIfClientOn", "[testing]" )
-{
-    if(CheckIfPIDExists("systemd"))
+    SetupPaths();
+    FindPasswordFile();
+    
+    SECTION( "ShouldWriteAndReadData" )
     {
-        ShutDown("systemd ON on home IP");
+        period = "10000000000";
+        phoneNum = "8004003000";
+        string temp1 = period;
+        string temp2 = phoneNum;
+        writeData();
+        readData();
+        REQUIRE(temp1.compare(period) == 0);
+        REQUIRE(temp2.compare(phoneNum) == 0);
+        printf("timeline: %s\n",timeline);
+        REQUIRE(timeline.compare("") != 0);
     }
-    REQUIRE(isShuttingDown);
 }
-TEST_CASE( "ShouldTurnServerOnAndCheckVPN", "[testing]" )
-{
-    SetupVPNIPAndHomeIP();
-    for(int i = 0; i < 10; i++)
-    {
-        printf("Server ip is equal to ");
-        IsVPNActive();
-    }
-    REQUIRE(IsVPNActive());
-}
-TEST_CASE( "ShouldShutdownServerAfterIPChange", "[testing]")
-{
-    SetupVPNIPAndHomeIP();
-    for(int i = 0; i < 10; i++)
-    {
-        if(i >= 9)
-        {
-            homeIP = "47.144.17.23";
-            serverIP = "123.456.789.012";
-            printf("Home IP is now equal to %s\n", homeIP.c_str());
-        }
-        else
-        {
-            printf("Server ip is equal to ");
-        }
-        
-        IsVPNActive();
-    }
-    REQUIRE(!IsVPNActive());
-    REQUIRE(isShuttingDown);
-}
-
-/*
-TEST_CASE( "ShouldWriteToLog", "[testing]")
-{
-    SetPaths();
-    REQUIRE(WriteToLog("This is a test."));
-}
-
-
-TEST_CASE( "ShouldGetPhone", "[testing]" ) 
-{ 
-    SetUser();
-    cout<<"user: "<<homedir<<endl;
-    cout<<"path: " << homedir + "/.cache/xpncnt/expcnt"<<endl;
-    SetCntFile(homedir + "/.cache/xpncnt/expcnt");
-    string phone = GetPhone();
-    cout<<"phone: "<<phone.c_str()<<endl;
-    REQUIRE(phone.compare("") != 0);
-}*/

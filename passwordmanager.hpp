@@ -179,7 +179,7 @@ void NotifyStart()
 		firstrun = false;
 	}
 }
-void FindPasswordFile()
+string FindPasswordFile()
 {		
 	string emptystr;
 	emptystr = "";
@@ -196,15 +196,17 @@ void FindPasswordFile()
 		char * usbdir = dirname((char*)path.c_str());
 		susbdir = p2str(usbdir);
 		pwd_found = true;
+		return susbdir;
 	}
 	else
 	{
 		FILE *fp = popen(notify_update, "r");
 		pclose(fp);
 		sleep(15); //.pwd not found - after 15 sec continue looping
+		return "";
 	}	
 }
-void WritePassword()
+bool WritePassword()
 {
 	string oldpwd;
 	string oldrootpwd;
@@ -231,16 +233,12 @@ void WritePassword()
 	{
 		cout<<"old rootpwd - "<<newpwd<<endl;
 		cout<<"rootpwd is updated to "<<newrootpwd<<endl;
-		//rootpwdupdated = true;
 	}
 	printf("popping up notify_success msg - %s\n", notify_success);
 	FILE *fp = popen(notify_success, "r");
 	pclose(fp);
-
-	//rewrite updated info into the file
 	//TODO: REMOVE COMMENT WHEN DONE writeData();
-
-	printf("in second while loop before break statement\n");
+	return pwdupdated;
 }
 bool SetPassword()
 {
@@ -276,7 +274,7 @@ void CheckForExpiration()
 		printf("not expired. looping...\n");
 	}
 }
-void ConstructMessages()
+void SetupPaths()
 {
 	strcpy(xpncnt_dir, "/home/");
 	strcat(xpncnt_dir, regusr);
@@ -286,8 +284,9 @@ void ConstructMessages()
 	strcpy(cntpath, xpncnt_dir);
 	strcat(cntpath, "expcnt");
 	printf("expcnt path is: %s\n", cntpath);
-
-
+}
+void ConstructMessages()
+{
 	strcpy(notify_update, "DISPLAY=:0 sudo -u ");
 	strcat(notify_update, regusr);
 	strcat(notify_update, " notify-send '");
@@ -306,35 +305,3 @@ void ConstructMessages()
 	phonemsg +=  phoneNum;
 	phonemsg +=  "@txt.att.net";
 }
-int main()
-{
-	strcpy(pwdfile, "");
-	getcwd(origdir, sizeof(origdir));
-	string usr = shellCommand("dir /home/ &");
-	strcpy(regusr, usr.c_str());
-	regusr [ strcspn(regusr, "\r\n") ] = 0;
-	printf("username is: %s\n", regusr);
-
-	ConstructMessages();
-	readData();
-
-	printf("before while\n");
-
-	strcpy(user_loggedin, "");
-	bool loggedIn = false;
-	while(!loggedIn)
-	{
-		if(!IsUserLoggedIn())
-		{
-			CheckForCurrentUsers();
-			loggedIn = true;
-		}
-	}
-	NotifyStart();
-	while(1)
-	{
-		CheckForExpiration();
-	}
-	return 0;
-}
-
