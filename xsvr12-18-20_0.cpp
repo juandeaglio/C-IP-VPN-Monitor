@@ -6,11 +6,9 @@ int main()
 {
 	strcpy(pwdfile, "");
 	getcwd(origdir, sizeof(origdir));
-	string usr = shellCommand("dir /home/ &");
-	strcpy(regusr, usr.c_str());
-	regusr [ strcspn(regusr, "\r\n") ] = 0;
-	printf("username is: %s\n", regusr);
+	GetRegusr();
 	
+
 	SetupPaths();
 	ConstructMessages();
 	readData();

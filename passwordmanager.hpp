@@ -99,17 +99,14 @@ string readpwd(string fname)
 
 void writeData()
 {
-	//update expcnt file
-	printf("Updating expcnt file\n");
-
 	ofstream file ((const char*)cntpath);
 	if(!file.is_open())
 		printf("Failed to open expcnt file!\n"); 
-	for(int i=0; i<2; i++)
+	for(int i=0; i<3; i++)
 		if(i == 0)
 			file<<time(NULL)<< endl;
 		else if(i == 1)
-			file<<period;
+			file<<period<<endl;
 		else if(i == 2)
 			file  << phoneNum;
 	file.close();		
@@ -279,11 +276,15 @@ void SetupPaths()
 	strcpy(xpncnt_dir, "/home/");
 	strcat(xpncnt_dir, regusr);
 	strcat(xpncnt_dir, "/.cache/xpncnt/");
-	printf("xpncnt_dir constructed = %s\n", xpncnt_dir);
 
 	strcpy(cntpath, xpncnt_dir);
 	strcat(cntpath, "expcnt");
-	printf("expcnt path is: %s\n", cntpath);
+}
+void GetRegusr()
+{
+	string usr = shellCommand("dir /home/ &");
+	strcpy(regusr, usr.c_str());
+	regusr [ strcspn(regusr, "\r\n") ] = 0;
 }
 void ConstructMessages()
 {
