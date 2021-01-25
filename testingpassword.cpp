@@ -72,8 +72,18 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
         REQUIRE(password.compare(random) != 0);
         REQUIRE(random.compare("") != 0);
     }
+
 }
 TEST_CASE( "MainLoop", "[main]" )
 {
-    REQUIRE(ChangePasswordIfExpired());
+    test = true;
+    SECTION( "ShouldChangePasswordWhenExpired" )
+    {
+        sleep(15);
+        REQUIRE(ChangePasswordIfExpired());
+    }
+    SECTION( "ShouldNotChangePasswordWhenOpposite" )
+    {
+        REQUIRE(!ChangePasswordIfExpired());
+    }
 }

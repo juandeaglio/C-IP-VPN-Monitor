@@ -390,6 +390,10 @@ bool ChangePasswordIfExpired()
 				return false;
 			isExpired = false;
 		}
+		else
+		{
+			return false;
+		}
 	}
 	return true;
 }
