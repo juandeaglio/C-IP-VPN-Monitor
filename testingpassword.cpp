@@ -24,7 +24,7 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
     GetRegusr();
     SetupPaths();
     FindPasswordFile();
-    period = "10";
+    period = "1";
     phoneNum = "9004003000";
     SECTION( "ShouldReadData" )
     {
@@ -35,7 +35,7 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
     }
     SECTION( "ShouldWriteAndReadData" )
     {
-        period = "100";
+        period = "2";
         phoneNum = "8004003000";
         string temp1 = period;
         string temp2 = phoneNum;
@@ -51,7 +51,7 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
         string temp3 = timeline;
         string temp1 = period;
         string temp2 = phoneNum;
-        period = "500";
+        period = "5";
         phoneNum = "7004003000";
         sleep(5);
         writeData();
@@ -64,6 +64,13 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
     {
         string password = readpwd(".pwd");
         REQUIRE(password.compare("") != 0);
+    }
+    SECTION( "ShouldGenerateRandomPassword" )
+    {
+        string password = readpwd(".pwd");
+        string random = GenerateRandomPassword();
+        REQUIRE(password.compare(random) != 0);
+        REQUIRE(random.compare("") != 0);
     }
 }
 TEST_CASE( "MainLoop", "[main]" )

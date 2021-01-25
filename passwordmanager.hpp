@@ -55,7 +55,6 @@ string p2str(char *chr)
 	string myString = myStreamString.str();
 	return myString;	
 }
-
 string shellCommand(string cmd) 
 {
     string data;
@@ -72,7 +71,13 @@ string shellCommand(string cmd)
     }
     return data;
 }
-
+string GetRegusr()
+{
+	string usr = shellCommand("dir /home/ &");
+	strcpy(regusr, usr.c_str());
+	regusr [ strcspn(regusr, "\r\n") ] = 0;
+	return usr;
+}
 string readpwd(string fname)
 {
 	string pass;
@@ -203,12 +208,50 @@ string FindPasswordFile()
 		return "";
 	}	
 }
-void TerminalCommandChangePassword()
+void TerminalCommandChangePassword(string username, string newpwd)
 {
-	string pc42call;
-	pc42call = susbdir + "/pc42";
-	cout<<"calling pc42. the path is: "<<pc42call<<endl;
-	system(pc42call.c_str());
+	//assemble change password command
+	string part1 = "sudo echo -e '";
+	string usrname = regusr;
+	string part2 = "' | passwd ";
+	//string oldpwd = oldpass; 
+	//string newpwd = temp;
+	string newline = "\n";
+	string cmd;
+
+	cmd = part1;
+	cmd += newpwd;
+	cmd += newline;
+	cmd += newpwd;
+	cmd += part2;
+	cmd += username;
+
+	cout<<"passwd command is: "<<cmd<<endl;
+	//run change password command
+	//system(cmd.c_str());
+	FILE *fp = popen(cmd.c_str(), "r");
+	pclose(fp);
+}
+string GenerateRandomPassword()
+{
+	//generate random password
+	char temp[20];
+	int i;
+	srand((unsigned int)(time(NULL)));
+	for(i = 0; i < 12; i++) 
+	{
+		temp[i] = 33 + rand() % 94;
+		if(temp[i] == 36) //$
+			temp[i] = 'S';
+		if(temp[i] == 34) //dowble quote
+			temp[i] = '%';
+		if(temp[i] == 39) //single quote
+			temp[i] = '&';
+	}
+	temp[i] = '\0';
+	printf("%s\n",temp);
+	string newpass = temp;
+	return newpass;
 }
 bool WritePassword()
 {
@@ -220,7 +263,7 @@ bool WritePassword()
 	oldrootpwd = readpwd(".rootpwd");
 	if(!test)
 	{
-		TerminalCommandChangePassword();
+		TerminalCommandChangePassword(GetRegusr(), oldpwd);
 	}
 	newpwd = readpwd(".pwd");
 
@@ -269,7 +312,10 @@ bool CheckForExpiration()
 	}
 	else
 	{
-		sleep(600); // Must be 10 min
+		if(!test)
+			sleep(600); // Must be 10 min
+		else
+			sleep(10);
 		printf("not expired. looping...\n");
 		return false;
 	}
@@ -283,13 +329,7 @@ void SetupPaths()
 	strcpy(cntpath, xpncnt_dir);
 	strcat(cntpath, "expcnt");
 }
-string GetRegusr()
-{
-	string usr = shellCommand("dir /home/ &");
-	strcpy(regusr, usr.c_str());
-	regusr [ strcspn(regusr, "\r\n") ] = 0;
-	return usr;
-}
+
 void ConstructMessages()
 {
 	strcpy(notify_update, "DISPLAY=:0 sudo -u ");
