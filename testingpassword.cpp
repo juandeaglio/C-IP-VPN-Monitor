@@ -3,17 +3,28 @@
 #include "passwordmanager.hpp"
 using namespace std;
 
-TEST_CASE( "ShouldFindPasswordFile", "[utility]" )
+TEST_CASE( "UtilityFunctions", "[utility]" )
 {	
-    string passwordFile = FindPasswordFile();
-    REQUIRE(passwordFile.compare("") != 0);
+    test = true;
+    SECTION( "ShouldFindPasswordFile" )
+    {
+        string passwordFile = FindPasswordFile();
+        REQUIRE(passwordFile.compare("") != 0);
+    }
+    SECTION( "ShouldGetRegUsr" )
+    {
+        REQUIRE(GetRegusr().compare("") != 0);
+        REQUIRE(strcmp("f32", regusr) == 0);
+        REQUIRE(strcmp("", regusr) != 0);
+    }
 }
 TEST_CASE( "PasswordManagingFunctions", "[manager]")
 {
+    test = true;
     GetRegusr();
     SetupPaths();
     FindPasswordFile();
-    period = "100000000000";
+    period = "10";
     phoneNum = "9004003000";
     SECTION( "ShouldReadData" )
     {
@@ -24,7 +35,7 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
     }
     SECTION( "ShouldWriteAndReadData" )
     {
-        period = "10000000000";
+        period = "100";
         phoneNum = "8004003000";
         string temp1 = period;
         string temp2 = phoneNum;
@@ -40,7 +51,7 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
         string temp3 = timeline;
         string temp1 = period;
         string temp2 = phoneNum;
-        period = "50000000000";
+        period = "500";
         phoneNum = "7004003000";
         sleep(5);
         writeData();
@@ -49,4 +60,13 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
         REQUIRE(temp2.compare(phoneNum) != 0);
         REQUIRE(timeline.compare(temp3) != 0);
     }
+    SECTION( "ShouldReadPassword" )
+    {
+        string password = readpwd(".pwd");
+        REQUIRE(password.compare("") != 0);
+    }
+}
+TEST_CASE( "MainLoop", "[main]" )
+{
+    REQUIRE(ChangePasswordIfExpired());
 }

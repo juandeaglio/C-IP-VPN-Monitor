@@ -47,6 +47,7 @@ char regusr[50];
 string ul = "";
 bool pwd_found = false;
 bool pwdupdated = false;
+bool test = false;
 string p2str(char *chr)
 {
 	stringstream myStreamString;
@@ -144,24 +145,23 @@ bool expired()
 	else
 		return false;
 }
-void CheckForCurrentUsers()
+bool CheckForCurrentUsers()
 {
 	ul = shellCommand("users");
 	strcpy(user_loggedin, ul.c_str());
 	printf("ul.c_str() is: %s\n", ul.c_str());
 	printf("user_loggedin before null terminator removal is: %s\n", user_loggedin);
-
 	//remove '\n' char from user_loggedin
 	user_loggedin [ strcspn(user_loggedin, "\r\n") ] = 0;
 	printf("in if. user logged in is: %s\n", user_loggedin);
-	sleep(1);
+	return true;
 }
 bool IsUserLoggedIn()
 {
 	if(strcmp(user_loggedin, "") == 0)
-		return true;	
-	else	//user found
-		return false;
+		return false;	
+	else
+		return true;
 }
 void NotifyStart()
 {	if(firstrun)
@@ -203,6 +203,13 @@ string FindPasswordFile()
 		return "";
 	}	
 }
+void TerminalCommandChangePassword()
+{
+	string pc42call;
+	pc42call = susbdir + "/pc42";
+	cout<<"calling pc42. the path is: "<<pc42call<<endl;
+	system(pc42call.c_str());
+}
 bool WritePassword()
 {
 	string oldpwd;
@@ -211,14 +218,12 @@ bool WritePassword()
 	string newrootpwd;
 	oldpwd = readpwd(".pwd");
 	oldrootpwd = readpwd(".rootpwd");
-
-	string pc42call;
-	pc42call = susbdir + "/pc42";
-	cout<<"calling pc42. the path is: "<<pc42call<<endl;
-	system(pc42call.c_str());
-	sleep(2);
-	
+	if(!test)
+	{
+		TerminalCommandChangePassword();
+	}
 	newpwd = readpwd(".pwd");
+
 	if(newpwd != oldpwd)
 	{
 		cout<<"old pwd - "<<oldpwd<<endl;
@@ -234,8 +239,13 @@ bool WritePassword()
 	printf("popping up notify_success msg - %s\n", notify_success);
 	FILE *fp = popen(notify_success, "r");
 	pclose(fp);
-	//TODO: REMOVE COMMENT WHEN DONE writeData();
+	writeData();
 	return pwdupdated;
+}
+void SendPhoneAMsg()
+{
+		FILE *fp = popen(phonemsg.c_str(), "r");
+		pclose(fp);
 }
 bool SetPassword()
 {
@@ -251,24 +261,17 @@ bool SetPassword()
 	}
 	return result;
 }
-void CheckForExpiration()
+bool CheckForExpiration()
 {
-
-	bool done = false;
 	if(expired())
 	{
-		FILE *fp = popen(phonemsg.c_str(), "r");
-		pclose(fp);
-
-		while(!done)
-		{
-			done = SetPassword();
-		}
+		return true;
 	}
 	else
 	{
 		sleep(600); // Must be 10 min
 		printf("not expired. looping...\n");
+		return false;
 	}
 }
 void SetupPaths()
@@ -280,11 +283,12 @@ void SetupPaths()
 	strcpy(cntpath, xpncnt_dir);
 	strcat(cntpath, "expcnt");
 }
-void GetRegusr()
+string GetRegusr()
 {
 	string usr = shellCommand("dir /home/ &");
 	strcpy(regusr, usr.c_str());
 	regusr [ strcspn(regusr, "\r\n") ] = 0;
+	return usr;
 }
 void ConstructMessages()
 {
@@ -305,4 +309,47 @@ void ConstructMessages()
 	phonemsg +=  " Password expired. Update plz.' | ssmtp ";
 	phonemsg +=  phoneNum;
 	phonemsg +=  "@txt.att.net";
+}
+bool ChangePasswordIfExpired()
+{
+	strcpy(pwdfile, "");
+	getcwd(origdir, sizeof(origdir));
+	GetRegusr();
+	
+
+	SetupPaths();
+	ConstructMessages();
+	readData();
+
+	printf("before while\n");
+
+	strcpy(user_loggedin, "");
+	bool loggedIn = IsUserLoggedIn();
+	while(!loggedIn)
+	{
+		if(!IsUserLoggedIn())
+		{
+			CheckForCurrentUsers();
+			if(strcmp(user_loggedin, "") == 0 && strcmp(user_loggedin, "f32") != 0)
+				return false;
+			loggedIn = true;
+		}
+	}
+	NotifyStart();
+	bool isExpired = false;
+	bool passwordChanged = false;
+	while(!passwordChanged)
+	{
+		isExpired = CheckForExpiration();
+		if(isExpired)
+		{
+			SendPhoneAMsg();
+			if(SetPassword())
+				passwordChanged = true;
+			else
+				return false;
+			isExpired = false;
+		}
+	}
+	return true;
 }
