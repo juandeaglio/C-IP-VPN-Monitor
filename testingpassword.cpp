@@ -51,7 +51,7 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
         string temp3 = timeline;
         string temp1 = period;
         string temp2 = phoneNum;
-        period = "5";
+        period = "3";
         phoneNum = "7004003000";
         sleep(5);
         writeData();
@@ -85,5 +85,28 @@ TEST_CASE( "MainLoop", "[main]" )
     SECTION( "ShouldNotChangePasswordWhenOpposite" )
     {
         REQUIRE(!ChangePasswordIfExpired());
+    }
+    SECTION( "ShouldChangePasswordAfter100Checks" )
+    {
+        string password = readpwd(".pwd");
+        GetRegusr();
+        SetupPaths();
+        FindPasswordFile();
+        period = "499";
+        phoneNum = "7004003000";
+        writeData();
+        readData();
+        bool failed;
+        for(int i = 0; i < 100; i++)
+        {
+            failed = !ChangePasswordIfExpired();
+            if(failed)
+                printf("Failed at: %d", i);
+            else
+                printf("Success at: %d", i);
+                
+            REQUIRE(failed);
+        }
+        REQUIRE(ChangePasswordIfExpired());
     }
 }

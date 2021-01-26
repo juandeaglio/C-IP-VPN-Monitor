@@ -315,7 +315,7 @@ bool CheckForExpiration()
 		if(!test)
 			sleep(600); // Must be 10 min
 		else
-			sleep(10);
+			sleep(5);
 		printf("not expired. looping...\n");
 		return false;
 	}
