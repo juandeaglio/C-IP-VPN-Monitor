@@ -25,7 +25,7 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
     SetupPaths();
     FindPasswordFile();
     period = "1";
-    phoneNum = "9004003000";
+    phoneNum = "756765767";
     SECTION( "ShouldReadData" )
     {
         readData();
@@ -36,7 +36,7 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
     SECTION( "ShouldWriteAndReadData" )
     {
         period = "2";
-        phoneNum = "8004003000";
+        phoneNum = "54545454545";
         string temp1 = period;
         string temp2 = phoneNum;
         writeData();
@@ -52,7 +52,7 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
         string temp1 = period;
         string temp2 = phoneNum;
         period = "3";
-        phoneNum = "7004003000";
+        phoneNum = "4636346346";
         sleep(5);
         writeData();
         readData();
@@ -74,39 +74,63 @@ TEST_CASE( "PasswordManagingFunctions", "[manager]")
     }
 
 }
+
+TEST_CASE( "LoggingAndCommunication", "[Logging]")
+{
+    SECTION( "ShouldSendPhoneMessage" )
+    {
+        GetRegusr();
+        SetupPaths();
+        FindPasswordFile();
+        period = "3";
+        phoneNum = "8052185180";
+        string temp = phoneNum;
+        writeData();
+        readData();
+        SendPhoneAMsg("This is a test from Anton.");
+        REQUIRE(phoneNum.compare(temp) == 0);
+        phoneNum = "NANANNA";
+        writeData();
+        readData();
+    }
+}
 TEST_CASE( "MainLoop", "[main]" )
 {
     test = true;
+    GetRegusr();
+    SetupPaths();
+    FindPasswordFile();
+
     SECTION( "ShouldChangePasswordWhenExpired" )
     {
         sleep(15);
         REQUIRE(ChangePasswordIfExpired());
     }
     SECTION( "ShouldNotChangePasswordWhenOpposite" )
-    {
+    {   
+        writeData();
         REQUIRE(!ChangePasswordIfExpired());
     }
     SECTION( "ShouldChangePasswordAfter100Checks" )
     {
         string password = readpwd(".pwd");
-        GetRegusr();
-        SetupPaths();
-        FindPasswordFile();
         period = "499";
-        phoneNum = "7004003000";
+        phoneNum = "111111111";
         writeData();
         readData();
-        bool failed;
-        for(int i = 0; i < 100; i++)
+        sleep(1);
+        bool failed = true;
+        for(int i = 0; i < 100 && failed; i++)
         {
             failed = !ChangePasswordIfExpired();
             if(failed)
-                printf("Failed at: %d", i);
+                printf("Failed at: %d\n", i);
             else
-                printf("Success at: %d", i);
+                printf("Success at: %d\n", i);
                 
             REQUIRE(failed);
         }
         REQUIRE(ChangePasswordIfExpired());
     }
+
 }

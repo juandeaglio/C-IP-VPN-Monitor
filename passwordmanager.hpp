@@ -114,7 +114,7 @@ void writeData()
 		else if(i == 1)
 			file<<period<<endl;
 		else if(i == 2)
-			file  << phoneNum;
+			file<<phoneNum;
 	file.close();		
 }
 void readData()
@@ -285,8 +285,13 @@ bool WritePassword()
 	writeData();
 	return pwdupdated;
 }
-void SendPhoneAMsg()
+void SendPhoneAMsg(string message)
 {
+		phonemsg = "echo '";
+		phonemsg +=  regusr;
+		phonemsg +=  message + "' | ssmtp ";
+		phonemsg +=  phoneNum;
+		phonemsg +=  "@txt.att.net";
 		FILE *fp = popen(phonemsg.c_str(), "r");
 		pclose(fp);
 }
@@ -383,7 +388,7 @@ bool ChangePasswordIfExpired()
 		isExpired = CheckForExpiration();
 		if(isExpired)
 		{
-			SendPhoneAMsg();
+			SendPhoneAMsg("Password is expired, please update.");
 			if(SetPassword())
 				passwordChanged = true;
 			else
